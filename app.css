@@ -627,3 +627,6 @@ code{font-size:.85em;color:var(--acc-hi)}
 .mx-top{position:relative;padding-right:40px}
 .mx-top .btn.icon{position:absolute;right:0;top:-2px;margin:0}
 @media (min-width:761px){.mx-grid{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 112px minmax(0,1fr) minmax(0,1.4fr)}}
+a.btn{text-decoration:none;color:var(--fg)}
+a.btn.primary{color:var(--on-acc)}
+a.btn.ghost{color:var(--muted)}

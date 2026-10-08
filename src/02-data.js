@@ -12,7 +12,7 @@ async function api(path, opts = {}) {
   let data = null;
   try { data = await r.json(); } catch (e) { }
   if (r.status === 401 && S.mode === 'live') { renderGate('Tu sesión terminó. Vuelve a entrar.'); throw new Error('Sesión terminada'); }
-  if (!r.ok) throw new Error(data?.message || data?.error || `Error ${r.status}`);
+  if (!r.ok) { const err = new Error(data?.message || data?.error || `Error ${r.status}`); err.data = data; throw err; }
   return data;
 }
 

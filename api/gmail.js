@@ -1,6 +1,7 @@
 // GET: correos recientes de Gmail (solo lectura). POST: copia los adjuntos de un correo a Drive.
 import { Readable } from 'node:stream';
-import { gmail, drive, subfolder, hint } from '../lib/google.js';
+import { drive, subfolder, hint } from '../lib/google.js';
+import { buzones, clienteDe } from '../lib/correos.js';
 import { requireUser, readJson } from '../lib/session.js';
 
 const header = (m, n) => m.payload?.headers?.find(h => h.name.toLowerCase() === n)?.value || '';
@@ -30,22 +31,31 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const user = requireUser(req, res); if (!user) return;
   try {
-    const g = gmail(req);
+    const todos = await buzones(req);
+    if (!todos.length) return res.status(409).json({ code: 'sin_gmail', message: 'Todavía no hay ningún Gmail conectado. En Ajustes, pulsa "Conectar mi Gmail".' });
     if (req.method === 'GET') {
       const q = String(req.query?.q || 'newer_than:30d -category:promotions -category:social');
-      const list = await g.users.messages.list({ userId: 'me', q, maxResults: 30 });
-      const ids = (list.data.messages || []).map(m => m.id);
-      const msgs = await Promise.all(ids.map(id => g.users.messages.get({ userId: 'me', id, format: 'full' }).then(r => r.data).catch(() => null)));
-      return res.json({
-        messages: msgs.filter(Boolean).map(m => ({
-          id: m.id, threadId: m.threadId, fecha: new Date(+m.internalDate).toISOString(),
-          ...parseFrom(header(m, 'from')), subject: header(m, 'subject'), snippet: m.snippet ? m.snippet.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '',
-          body: bodyText(m), attachments: attachments(m)
-        }))
-      });
+      const errores = [];
+      const porBuzon = await Promise.all(todos.map(async b => {
+        try {
+          const g = clienteDe(req, b);
+          const list = await g.users.messages.list({ userId: 'me', q, maxResults: 25 });
+          const ids = (list.data.messages || []).map(m => m.id);
+          const msgs = await Promise.all(ids.map(id => g.users.messages.get({ userId: 'me', id, format: 'full' }).then(r => r.data).catch(() => null)));
+          return msgs.filter(Boolean).map(m => ({
+            id: m.id, threadId: m.threadId, cuenta: b.cuenta, fecha: new Date(+m.internalDate).toISOString(),
+            ...parseFrom(header(m, 'from')), subject: header(m, 'subject'), snippet: m.snippet ? m.snippet.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '',
+            body: bodyText(m), attachments: attachments(m)
+          }));
+        } catch (e) { errores.push({ cuenta: b.cuenta, message: hint(e) }); return []; }
+      }));
+      const messages = porBuzon.flat().sort((a, b) => b.fecha.localeCompare(a.fecha));
+      return res.json({ messages, buzones: todos.map(b => b.cuenta), errores });
     }
     if (req.method === 'POST') {
-      const { id, attachments: want = [], folder } = await readJson(req);
+      const { id, cuenta, attachments: want = [], folder } = await readJson(req);
+      const b = todos.find(x => x.cuenta === cuenta) || todos[0];
+      const g = clienteDe(req, b);
       const m = (await g.users.messages.get({ userId: 'me', id, format: 'full' })).data;
       const parts = [];
       walk(m.payload, p => { if (p.filename && p.body?.attachmentId && want.includes(p.partId)) parts.push(p); });

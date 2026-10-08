@@ -253,7 +253,7 @@ async function guardarVarios(btn) {
       if (S.mode === 'demo') ids.forEach(a => { const x = mxAtt(a); docBy[cid + a] = { id: 'demo-' + a, name: x.name, size: x.size }; });
       else {
         toast('Guardando adjuntos en Drive…');
-        const r = await api('api/gmail', { json: { id: m.id, attachments: ids, folder: clienteNombre(cid) } });
+        const r = await api('api/gmail', { json: { id: m.id, cuenta: m.cuenta, attachments: ids, folder: clienteNombre(cid) } });
         (r.docs || []).forEach(d => { docBy[cid + d.partId] = d; });
       }
     }

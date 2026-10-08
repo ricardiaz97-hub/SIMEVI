@@ -9,13 +9,13 @@ export default async function handler(req, res) {
   const user = requireUser(req, res); if (!user) return;
   try {
     if (req.method === 'GET') {
-      const all = await readAll(req);
+      const all = await readAll(req, Object.keys(TABLES).filter(t => t !== 'conexiones'));
       all.bitacora = (all.bitacora || []).slice(-1500);
       return res.json(all);
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
     const { op, table, row, id, log: lg = {} } = await readJson(req);
-    if (!TABLES[table] || table === 'bitacora') return res.status(400).json({ message: 'Tabla no válida' });
+    if (!TABLES[table] || table === 'bitacora' || table === 'conexiones') return res.status(400).json({ message: 'Tabla no válida' });
     if (op === 'upsert') {
       if (!row?.id) return res.status(400).json({ message: 'Falta el id' });
       const prev = await getRow(req, table, row.id);

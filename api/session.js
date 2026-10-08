@@ -1,5 +1,6 @@
 // Quién está conectado y el estado de Google. La app lo pide al arrancar.
 import { CLIENT_ID, REFRESH_TOKEN, missingEnv, workspace, tokenInfo } from '../lib/google.js';
+import { buzones } from '../lib/correos.js';
 import { currentUser, users } from '../lib/session.js';
 
 export default async function handler(req, res) {
@@ -14,7 +15,8 @@ export default async function handler(req, res) {
       out.google.folderUrl = `https://drive.google.com/drive/folders/${ws.root}`;
       const info = await tokenInfo(req);
       out.google.account = info.email;
-      out.google.gmail = info.scopes.some(s => s.includes('gmail'));
+      out.google.gmails = (await buzones(req)).map(b => ({ cuenta: b.cuenta, por: b.por, fecha: b.fecha }));
+      out.google.gmail = out.google.gmails.length > 0;
     } catch (e) { out.google.error = e.message; }
   }
   res.json(out);

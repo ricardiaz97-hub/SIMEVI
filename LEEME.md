@@ -6,7 +6,7 @@ App web para Silvia de Díaz y Ricardo Vega (SIMEVI Corredores de Seguros). Todo
 | --- | --- |
 | Clientes, pólizas, trámites, pagos, bitácora | Hoja de cálculo **SIMEVI · Base de datos** (una pestaña por tabla) |
 | PDFs y fotos | Drive → carpeta **SIMEVI / Documentos / nombre del cliente** |
-| Solicitudes, números de reclamo, avisos de cheque | Se leen de **Gmail** (solo lectura: la app no envía ni borra correos) |
+| Solicitudes, números de reclamo, avisos de cheque | Se leen del **Gmail de trabajo de cada persona** (solo lectura: la app no envía ni borra correos) |
 
 No hay Supabase ni otro servicio de almacenamiento. Vercel solo sirve la app.
 
@@ -42,17 +42,24 @@ Importa el repositorio y agrega en **Settings → Environment Variables**:
 | --- | --- |
 | `GOOGLE_CLIENT_ID` | el Client ID (termina en `.apps.googleusercontent.com`) |
 | `GOOGLE_CLIENT_SECRET` | el Client secret |
-| `SIMEVI_USUARIOS` | `ricardovegaprod@gmail.com:Ricardo Vega, CORREO-DE-SILVIA@gmail.com:Silvia de Díaz` |
+| `SIMEVI_USUARIOS` | `ricardovegaprod@gmail.com:Ricardo Vega, silviavegadediaz@gmail.com:Silvia de Díaz` |
 | `SESSION_SECRET` | una frase larga cualquiera (40+ caracteres) |
 
 La primera persona de `SIMEVI_USUARIOS` es quien administra la conexión con Google. Pulsa **Deploy**.
 
 ### 4. Conectar Google
-1. Abre la app y entra con tu cuenta de Google.
-2. Pulsa **Conectar Google** y acepta todos los permisos.
-   Usa la cuenta **donde llegan los correos de los clientes y las aseguradoras**: ahí se crean la Hoja y la carpeta, y de ahí se lee la bandeja.
-3. La página final muestra un **token**. Pégalo en Vercel como `GOOGLE_REFRESH_TOKEN`, y el ID que aparece como `SIMEVI_SHEET_ID`.
-4. **Redeploy**. Listo: Silvia ya puede entrar con su propia cuenta de Google.
+Hay dos conexiones distintas:
+
+**Cuenta de datos** (una sola vez, quien administra). Es la cuenta de Google donde se guardan la Hoja y los PDFs, la que tiene más espacio.
+1. Entra a la app con tu correo de trabajo y ve a **Ajustes → Conectar cuenta de datos**.
+2. En la pantalla de Google elige la cuenta de datos (por ejemplo richigbkd@gmail.com) y acepta.
+3. La página final muestra un **token**. Pégalo en Vercel como `GOOGLE_REFRESH_TOKEN`, y el ID que aparece como `SIMEVI_SHEET_ID`. Pulsa **Redeploy**.
+
+**Gmail de cada persona** (cada quien desde su sesión). La Bandeja lee los correos de trabajo de todos los que se conecten.
+1. Entra a la app y ve a **Ajustes → Conectar mi Gmail**.
+2. Elige tu correo de trabajo y acepta. No hay que pegar nada: el permiso se guarda cifrado en una pestaña oculta de la Hoja.
+
+Google mostrará "Google no verificó esta app": pulsa *Configuración avanzada → Ir a SIMEVI*. Es normal para una app interna.
 
 Si algo no conecta, abre `https://TU-DOMINIO/api/diagnose`: revisa cada paso y dice qué falta, sin mostrar secretos.
 

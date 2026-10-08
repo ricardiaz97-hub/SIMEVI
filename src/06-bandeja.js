@@ -1,6 +1,7 @@
 /* ---------- Bandeja de Gmail ---------- */
 const DOMINIOS = { sisa: 'SISA', asesuisa: 'ASESUISA', pacifico: 'Seguros del Pacífico', mapfre: 'MAPFRE La Centro Americana', fedecredito: 'Seguros Fedecrédito', palig: 'Pan-American Life', panamerican: 'Pan-American Life', segurosazul: 'Seguros Azul', azul: 'Seguros Azul', davivienda: 'Davivienda Seguros', assa: 'ASSA', futuro: 'Seguros Futuro', acsa: 'Aseguradora Agrícola Comercial', atlantida: 'Atlántida Vida', qualitas: 'Quálitas' };
 const DEFAULT_GMAIL_Q = 'newer_than:30d -category:promotions -category:social -category:updates';
+const buzonNombre = c => firstName(S.users.find(u => u.email === c)) || c.split('@')[0];
 const mailDone = m => DB.correos.some(c => c.id === m.id);
 
 function aseguradoraDeCorreo(from) {
@@ -49,12 +50,14 @@ function classify(m) {
 async function loadInbox(force) {
   if (S.mode === 'demo') { S.inbox = S.demoInbox; return; }
   if (S.inboxLoading || (S.inbox && !force)) return;
-  S.inboxLoading = true; S.inboxErr = '';
+  S.inboxLoading = true; S.inboxErr = ''; S.inboxCode = '';
   if (S.route === 'bandeja') render(false);
   try {
     const d = await api('api/gmail?q=' + encodeURIComponent(S.f.gmailQ || DEFAULT_GMAIL_Q));
     S.inbox = d.messages || [];
-  } catch (e) { S.inboxErr = e.message; S.inbox = S.inbox || []; }
+    S.buzones = d.buzones || [];
+    if (d.errores?.length) S.inboxErr = d.errores.map(x => `${x.cuenta}: ${x.message}`).join(' · ');
+  } catch (e) { S.inboxErr = e.message; S.inboxCode = e.data?.code || ''; S.inbox = S.inbox || []; }
   S.inboxLoading = false;
   render(false);
 }
@@ -83,9 +86,9 @@ VIEWS.bandeja = () => {
       if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += `<button class="btn sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">Separar en varios</button>`;
       acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
     } else acts = `<span class="tag">${av(done.creadoPor, 'sm')}${esc(done.nota || 'Procesado')}</span>`;
-    if (S.mode === 'live') acts += `<a class="btn ghost sm" href="https://mail.google.com/mail/u/0/#all/${esc(m.threadId || m.id)}" target="_blank" rel="noopener">${ic('arrow-square-out')}Gmail</a>`;
+    if (S.mode === 'live') acts += `<a class="btn ghost sm" href="https://mail.google.com/mail/?authuser=${encodeURIComponent(m.cuenta || '')}#all/${esc(m.threadId || m.id)}" target="_blank" rel="noopener">${ic('arrow-square-out')}Gmail</a>`;
     return `<article class="mail ${done ? 'done' : ''}">
-      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b><span class="faint">${fmtAgo(m.fecha)}</span>${varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>` : `<span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span>`}</div>
+      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b>${(S.buzones || []).length > 1 && m.cuenta ? `<span class="pill">Para ${esc(buzonNombre(m.cuenta))}</span>` : ''}<span class="faint">${fmtAgo(m.fecha)}</span>${varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>` : `<span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span>`}</div>
       <h3>${esc(m.subject || '(sin asunto)')}</h3>
       <p>${esc(m.snippet || '')}</p>
       <div class="found">
@@ -105,8 +108,9 @@ VIEWS.bandeja = () => {
   <div class="toolbar"><div class="seg" role="group" aria-label="Correos">
     <button type="button" data-act="filter" data-k="bandeja" data-v="pend" aria-pressed="${f.bandeja === 'pend'}">Por revisar${pendN ? ` · ${pendN}` : ''}</button>
     <button type="button" data-act="filter" data-k="bandeja" data-v="hechos" aria-pressed="${f.bandeja === 'hechos'}">Procesados</button></div></div>
-  ${S.inboxErr ? `<div class="banner" style="background:var(--bad-soft);box-shadow:inset 0 0 0 1px var(--bad)">${ic('warning')}<span>No se pudo leer Gmail: ${esc(S.inboxErr)}</span><a class="btn sm" href="api/diagnose" target="_blank">Diagnóstico</a></div>` : ''}
-  <div class="panel">${S.inboxLoading && !S.inbox ? `<div class="panel-b">${'<div class="skel" style="margin:14px 0;width:70%"></div><div class="skel" style="margin:14px 0 26px;width:90%"></div>'.repeat(3)}</div>` : rows || `<div class="panel-b">${emptyState('tray', f.bandeja === 'pend' ? 'Bandeja al día' : 'Nada procesado todavía', f.bandeja === 'pend' ? 'No hay correos nuevos por revisar.' : 'Los correos que conviertas aparecerán aquí.')}</div>`}</div>`;
+  ${S.inboxCode === 'sin_gmail' ? `<div class="banner">${ic('envelope-simple')}<span>Para ver correos aquí, conecta tu Gmail de trabajo. Silvia conecta el suyo desde su sesión.</span><a class="btn primary sm" href="api/google/connect?para=gmail">${ic('google-logo')}Conectar mi Gmail</a></div>`
+  : S.inboxErr ? `<div class="banner" style="background:var(--bad-soft);box-shadow:inset 0 0 0 1px var(--bad)">${ic('warning')}<span>No se pudo leer Gmail: ${esc(S.inboxErr)}</span><a class="btn sm" href="api/diagnose" target="_blank">Diagnóstico</a></div>` : ''}
+  ${S.inboxCode === 'sin_gmail' ? '' : `<div class="panel">${S.inboxLoading && !S.inbox ? `<div class="panel-b">${'<div class="skel" style="margin:14px 0;width:70%"></div><div class="skel" style="margin:14px 0 26px;width:90%"></div>'.repeat(3)}</div>` : rows || `<div class="panel-b">${emptyState('tray', f.bandeja === 'pend' ? 'Bandeja al día' : 'Nada procesado todavía', f.bandeja === 'pend' ? 'No hay correos nuevos por revisar.' : 'Los correos que conviertas aparecerán aquí.')}</div>`}</div>`}`;
 };
 
 async function markMail(id, nota, tramiteId) {
@@ -118,7 +122,7 @@ async function importAttachments(m, carpeta) {
   if (!m.attachments?.length) return [];
   if (S.mode === 'demo') return m.attachments.map(a => ({ id: 'demo-' + a.id, name: a.name, size: a.size }));
   toast('Guardando adjuntos en Drive…');
-  const d = await api('api/gmail', { json: { id: m.id, attachments: m.attachments.map(a => a.id), folder: carpeta } });
+  const d = await api('api/gmail', { json: { id: m.id, cuenta: m.cuenta, attachments: m.attachments.map(a => a.id), folder: carpeta } });
   return d.docs || [];
 }
 
@@ -195,11 +199,15 @@ VIEWS.ajustes = () => {
   <div class="home-grid">
     <div class="panel"><div class="panel-h"><h2>GOOGLE</h2>${S.mode === 'live' ? `<span class="pill ${s.google?.connected ? 'ok' : 'bad'}">${s.google?.connected ? 'Conectado' : 'Sin conectar'}</span>` : '<span class="pill">Demo</span>'}</div><div class="panel-b">
       ${S.mode === 'live' ? `
-        <div class="kv"><div><dt>Base de datos</dt><dd>${s.google?.sheetUrl ? `<a href="${esc(s.google.sheetUrl)}" target="_blank" rel="noopener">Hoja “SIMEVI · Base de datos”</a>` : 'Se crea al conectar'}</dd></div>
-        <div><dt>Documentos</dt><dd>${s.google?.folderUrl ? `<a href="${esc(s.google.folderUrl)}" target="_blank" rel="noopener">Carpeta SIMEVI en Drive</a>` : '-'}</dd></div>
-        <div><dt>Cuenta de Google</dt><dd>${esc(s.google?.account || '-')}</dd></div><div><dt>Gmail</dt><dd>${s.google?.gmail ? 'Con permiso de lectura' : 'Sin permiso'}</dd></div></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">${s.user?.admin ? `<a class="btn" href="api/google/connect">${ic('google-logo')}${s.google?.connected ? 'Volver a conectar' : 'Conectar Google'}</a>` : ''}<a class="btn ghost" href="api/diagnose" target="_blank">${ic('seal-check')}Diagnóstico</a></div>`
-      : `<p class="muted" style="margin:0 0 12px;font-size:.88rem">En la versión publicada en Vercel, todo se guarda en tu Google: una Hoja de cálculo como base de datos, una carpeta de Drive para los PDFs, y Gmail para la bandeja. Silvia y tú entran con su cuenta de Google y cada cambio queda firmado.</p>
+        <div class="kv"><div><dt>Cuenta de datos</dt><dd>${esc(s.google?.account || 'Sin conectar')}</dd></div>
+        <div><dt>Base de datos</dt><dd>${s.google?.sheetUrl ? `<a href="${esc(s.google.sheetUrl)}" target="_blank" rel="noopener">Hoja “SIMEVI · Base de datos”</a>` : 'Se crea al conectar'}</dd></div>
+        <div><dt>Documentos</dt><dd>${s.google?.folderUrl ? `<a href="${esc(s.google.folderUrl)}" target="_blank" rel="noopener">Carpeta SIMEVI en Drive</a>` : '-'}</dd></div></div>
+        <div class="sec"><div class="label">Correos que lee la Bandeja</div>
+          ${(s.google?.gmails || []).length ? `<div class="docs">${s.google.gmails.map(g => `<div class="doc">${ic('envelope-simple')}<span>${esc(g.cuenta)}</span><small>conectó ${esc(firstName(userBy(g.por)))}</small>${S.me.admin || g.por === S.me.email || g.cuenta === S.me.email ? `<button class="btn ghost icon sm" type="button" data-act="gmail-off" data-v="${esc(g.cuenta)}" aria-label="Quitar ${esc(g.cuenta)}">${ic('x')}</button>` : ''}</div>`).join('')}</div>` : '<p class="muted" style="margin:0;font-size:.86rem">Ninguno todavía.</p>'}
+          <p class="faint" style="font-size:.8rem;margin:10px 0">Cada persona conecta su propio Gmail de trabajo entrando con su sesión. La app solo lee; no envía ni borra correos.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${s.google?.connected ? `<a class="btn primary" href="api/google/connect?para=gmail">${ic('google-logo')}Conectar mi Gmail</a>` : ''}${s.user?.admin ? `<a class="btn" href="api/google/connect?para=datos">${ic('google-drive-logo')}${s.google?.connected ? 'Volver a conectar datos' : 'Conectar cuenta de datos'}</a>` : ''}<a class="btn ghost" href="api/diagnose" target="_blank">${ic('seal-check')}Diagnóstico</a></div>`
+      : `<p class="muted" style="margin:0 0 12px;font-size:.88rem">En la versión publicada, los datos se guardan en una cuenta de Google (la Hoja y los PDFs) y la Bandeja lee el Gmail de trabajo de cada persona.</p>
          <p class="muted" style="margin:0;font-size:.88rem">Los pasos están en el archivo LEEME.md del proyecto.</p>`}
     </div></div>
     <div class="panel"><div class="panel-h"><h2>PERSONA</h2></div><div class="panel-b">

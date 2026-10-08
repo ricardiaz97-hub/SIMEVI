@@ -1,5 +1,6 @@
 // Revisa la configuración paso a paso. No muestra secretos.
-import { env, redirectUri, workspace, tokenInfo, hint, sheets, gmail } from '../lib/google.js';
+import { env, redirectUri, workspace, tokenInfo, hint, sheets } from '../lib/google.js';
+import { buzones, clienteDe } from '../lib/correos.js';
 import { users, currentUser } from '../lib/session.js';
 
 export default async function handler(req, res) {
@@ -18,13 +19,14 @@ export default async function handler(req, res) {
   else if (env('GOOGLE_REFRESH_TOKEN')) {
     try {
       const i = await tokenInfo(req);
-      add('Permiso de Google', true, 'cuenta ' + i.email);
-      add('Permiso de Gmail', i.scopes.some(s => s.includes('gmail')), i.scopes.some(s => s.includes('gmail')) ? 'lectura' : 'falta: vuelve a conectar y marca la casilla de Gmail');
+      add('Cuenta de datos (Hoja y PDFs)', true, i.email);
       const ws = await workspace(req);
       add('Carpeta y Hoja', true, 'hoja ' + ws.sheetId);
       await sheets(req).spreadsheets.get({ spreadsheetId: ws.sheetId, fields: 'properties.title' });
       add('Google Sheets API', true, 'responde');
-      await gmail(req).users.getProfile({ userId: 'me' }).then(() => add('Gmail API', true, 'responde')).catch(e => add('Gmail API', false, hint(e)));
+      const bs = await buzones(req);
+      if (!bs.length) add('Gmail para la Bandeja', false, 'ninguno conectado: cada persona entra a Ajustes → Conectar mi Gmail', true);
+      for (const b of bs) await clienteDe(req, b).users.getProfile({ userId: 'me' }).then(() => add('Gmail ' + b.cuenta, true, 'se puede leer')).catch(e => add('Gmail ' + b.cuenta, false, hint(e)));
     } catch (e) { add('Acceso a Google', false, hint(e)); }
   }
   const ok = checks.every(c => c.ok || c.warn);

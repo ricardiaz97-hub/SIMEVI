@@ -108,6 +108,12 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'set-user': S.me = S.users.find(u => u.email === el.dataset.v); persistDemo(); render(false); break;
+    case 'gmail-off': {
+      const c = el.dataset.v;
+      if (!await ask(`¿Dejar de leer ${c} en la Bandeja?`, { ok: 'Quitar' })) break;
+      try { await api('api/google/disconnect', { json: { cuenta: c } }); S.sess.google.gmails = S.sess.google.gmails.filter(g => g.cuenta !== c); S.inbox = null; render(false); toast('Gmail quitado'); } catch (err) { toast(err.message, 'err'); }
+      break;
+    }
     case 'logout': await fetch('api/logout', { method: 'POST' }); location.reload(); break;
     case 'gmailq-save': S.f.gmailQ = $('#gmailq').value.trim(); saveFilters(); S.inbox = null; toast('Búsqueda de Gmail guardada'); break;
     case 'export-all': {
@@ -217,14 +223,15 @@ async function boot() {
   } else {
     S.mode = 'live'; S.sess = sess; S.users = sess.users || [];
     if (!sess.user) return renderGate();
-    S.me = S.users.find(u => u.email === sess.user.email) || sess.user;
+    S.me = { ...(S.users.find(u => u.email === sess.user.email) || {}), ...sess.user };
     $('#root').innerHTML = `<div class="gate"><div class="gate-card"><img src="img/sv.webp" alt="" style="width:90px"><div class="skel" style="width:160px"></div></div></div>`;
     try { await loadLive(); }
     catch (e) {
       $('#root').innerHTML = `<div class="gate"><div class="panel gate-card"><img src="img/logo-full.webp" alt="SIMEVI"><p class="gate-err">${esc(e.message)}</p>${sess.user.admin ? `<a class="btn primary" href="api/google/connect">${ic('google-logo')}Conectar Google</a>` : '<p>Pide a Ricardo que conecte la cuenta de Google.</p>'}<a class="btn ghost" href="api/diagnose">Diagnóstico</a></div></div>`;
       return;
     }
-    if (new URLSearchParams(location.search).get('google') === 'ok') { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast('Google conectado'), 400); }
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('google') === 'ok' || qs.get('gmail') === 'ok') { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => toast(qs.get('gmail') ? 'Gmail conectado. La Bandeja ya lo lee.' : 'Google conectado'), 400); }
   }
   parseHash();
   render(true);
