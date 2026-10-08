@@ -5,5 +5,5 @@
   "type": "module",
   "scripts": { "unir": "python3 tools/build.py" },
   "dependencies": { "googleapis": "^160.0.0" },
-  "engines": { "node": ">=18" }
+  "engines": { "node": "22.x" }
 }

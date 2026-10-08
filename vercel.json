@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/api/login",
+      "destination": "/api/auth?a=login"
+    },
+    {
+      "source": "/api/logout",
+      "destination": "/api/auth?a=logout"
+    },
+    {
+      "source": "/api/google/:a(connect|callback|disconnect)",
+      "destination": "/api/google?a=:a"
+    },
+    {
       "source": "/c/:t",
       "destination": "/index.html"
     }
