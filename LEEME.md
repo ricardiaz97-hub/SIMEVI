@@ -74,7 +74,7 @@ Si algo no conecta, abre `https://TU-DOMINIO/api/diagnose`: revisa cada paso y d
 
 ## Para hacer cambios al código
 
-El código de la app está en `src/` (partes numeradas). Después de editar, ejecuta `python3 tools/build.py`, que une las partes en `app.js`, y sube los dos.
+El código de la app está en `src/` (partes numeradas). Después de editar, ejecuta `python3 tools/build.py` (o `npm run unir`), que une las partes en `app.js`, y sube los dos.
 
 ```
 index.html        estructura y modo ligero

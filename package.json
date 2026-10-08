@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": { "build": "python3 tools/build.py" },
+  "scripts": { "unir": "python3 tools/build.py" },
   "dependencies": { "googleapis": "^160.0.0" },
   "engines": { "node": ">=18" }
 }
