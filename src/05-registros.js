@@ -100,11 +100,11 @@ async function savePago(to) {
 async function linkPagoTramite(p, isNew) {
   const t = tramite(p.tramiteId);
   if (t && isNew && tramiteAbierto(t) && t.etapa !== 'pago') {
-    t.etapa = 'pago'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.forma} disponible por ${fmtMoney(p.monto)}.` }];
+    t.etapa = 'pago'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'pago', texto: `${p.forma} disponible por ${fmtMoney(p.monto)}.` }];
     await save('tramites', t, `${t.codigo} a Pago disponible`, 'movió').catch(() => { });
   }
   if (t && !pagoAbierto(p) && tramiteAbierto(t)) {
-    t.etapa = 'cerrado'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.estado === 'depositado' ? 'Depositado' : 'Entregado a ' + p.entregadoA}. Cerrado.` }];
+    t.etapa = 'cerrado'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'cerrado', texto: `${p.estado === 'depositado' ? 'Depositado' : 'Entregado a ' + p.entregadoA}. Cerrado.` }];
     await save('tramites', t, `${t.codigo} a Cerrado`, 'movió').catch(() => { });
   }
 }
@@ -316,7 +316,7 @@ async function renderPortal(tok) {
   const abiertos = data.tramites.filter(t => t.etapa !== 'cerrado' && t.etapa !== 'rechazado');
   const cerrados = data.tramites.filter(t => !abiertos.includes(t));
   const card = t => {
-    const et = etapasDe(t.tipo); const rech = t.etapa === 'rechazado';
+    const et = etapasDe(t.tipo).filter(e => e.k !== 'requerido' || t.etapa === 'requerido'); const rech = t.etapa === 'rechazado';
     const idx = rech ? et.length - 1 : et.findIndex(e => e.k === t.etapa);
     return `<article class="panel ptk"><div class="row"><div><span class="label">${esc(t.tipo)}${t.numeroReclamo ? ` · N.º ${esc(t.numeroReclamo)}` : ''}</span><h3>${esc(t.asunto || t.tipo)}</h3></div><span class="pill ${rech ? 'bad' : t.etapa === 'cerrado' || t.etapa === 'pago' ? 'ok' : 'gold'}">${rech ? 'No aprobado' : esc(ETAPA[t.etapa]?.c || '')}</span></div>
       <ol class="steps ${rech ? 'bad' : ''}" style="margin-top:14px">${et.map((e, i) => `<li class="${i < idx ? 'done' : i === idx ? 'now' : ''}"><div class="bar"></div><span>${esc(e.c)}</span></li>`).join('')}</ol>

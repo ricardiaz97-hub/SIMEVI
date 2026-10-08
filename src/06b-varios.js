@@ -87,7 +87,7 @@ function extraer(m) {
         if (cheques[0]) last.cheque = cheques[0];
         if (monto && !last.monto) last.monto = toNum(monto);
       } else if (l !== m.subject || !items.length) {
-        nums.forEach(n => items.push({ numero: n, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
+        nums.filter(n => !items.some(i => i.numero === n)).forEach(n => items.push({ numero: n, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
         cheques.filter(c => !items.some(i => i.cheque === c)).forEach(c => items.push({ cheque: c, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
       }
     }
@@ -287,12 +287,13 @@ async function guardarVarios(btn) {
         if (r.paciente && !t.paciente) { t.paciente = r.paciente; t.parentesco = r.parentesco; }
         let accion;
         if (r.numero && ['recibido', 'ingresado'].includes(t.etapa)) { t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO(); accion = 'movió'; }
-        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `${m ? `Del correo "${m.subject}"` : 'Del PDF'}: ${cambios.join(', ') || 'revisado'}.` }];
+        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', ...(accion ? { a: 'numero' } : {}), texto: `${m ? `Del correo "${m.subject}"` : 'Del PDF'}: ${cambios.join(', ') || 'revisado'}.` }];
         await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'}`, accion);
         hechos.push(t);
       } else {
         const etapa = r.numero ? 'numero' : (MX.kind === 'solicitud' ? 'recibido' : 'ingresado');
         const nt = nuevoReclamo(r, { etapa, fecha: r.fecha || fecha, gmailId: m?.id || '', docs: docsDe(r), aseguradora: MX.aseguradora, origen: m ? `Recibido en el correo "${m.subject}".` : 'Leído del PDF.' });
+        if (m?.raiz) nt.hilo = m.raiz;
         await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))}${nt.asegurado !== clienteNombre(nt.clienteId) ? ' › ' + nt.asegurado : ''}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
         hechos.push(nt);
       }

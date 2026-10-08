@@ -48,11 +48,21 @@ const ETAPAS = [
   { k: 'ingresado', n: 'Ingresado', d: 'En el portal o entregado en físico', c: 'Presentado a la aseguradora' },
   { k: 'numero', n: 'Número asignado', d: 'La aseguradora dio número', c: 'La aseguradora lo registró' },
   { k: 'analisis', n: 'En análisis', d: 'La aseguradora lo revisa', c: 'En revisión' },
+  { k: 'requerido', n: 'Solicitud de información', d: 'La aseguradora pidió algo más', c: 'La aseguradora pidió más información' },
   { k: 'pago', n: 'Pago disponible', d: 'Cheque o depósito listo', c: 'Tu pago está listo' },
   { k: 'cerrado', n: 'Cerrado', d: 'Terminado', c: 'Terminado' }
 ];
 const ETAPA = Object.fromEntries(ETAPAS.map(e => [e.k, e]));
 const etapasDe = tipo => tipo === 'Reclamo' ? ETAPAS : ETAPAS.filter(e => e.k !== 'pago');
+const rangoEtapa = k => ({ recibido: 0, ingresado: 1, numero: 2, analisis: 3, requerido: 3.5, pago: 5, cerrado: 6, rechazado: 6 }[k] ?? 0);
+// Lo normal después de cada etapa. "Solicitud de información" no es un paso obligado: se marca cuando la aseguradora la pide.
+function siguienteEtapa(t) {
+  if (t.etapa === 'rechazado' || t.etapa === 'cerrado') return null;
+  if (t.etapa === 'requerido') return { k: 'analisis', n: 'Información enviada' };
+  const et = etapasDe(t.tipo).filter(e => e.k !== 'requerido');
+  const i = et.findIndex(e => e.k === t.etapa);
+  return i >= 0 && i < et.length - 1 ? et[i + 1] : null;
+}
 const CANALES = ['Portal de la aseguradora', 'Entrega en físico', 'Correo a la aseguradora'];
 const RAMOS = ['Vida', 'Gastos médicos', 'Accidentes personales', 'Automotor', 'Incendio', 'Daños', 'Responsabilidad civil', 'Fianzas', 'Transporte', 'Otro'];
 // Aseguradoras con portal para ingresar reclamos en línea. Las demás se entregan en físico.
@@ -111,7 +121,7 @@ const polizaEstado = p => {
 const etapaPill = t => {
   if (t.etapa === 'rechazado') return `<span class="pill bad">Rechazado</span>`;
   const e = ETAPA[t.etapa] || ETAPAS[0];
-  const cls = { recibido: 'info', ingresado: '', numero: 'gold', analisis: 'gold', pago: 'ok', cerrado: 'ok' }[e.k];
+  const cls = { recibido: 'info', ingresado: '', numero: 'gold', analisis: 'gold', requerido: 'warn', pago: 'ok', cerrado: 'ok' }[e.k];
   return `<span class="pill ${cls}">${esc(e.n)}</span>`;
 };
 const nextCodigo = () => {
@@ -121,7 +131,7 @@ const nextCodigo = () => {
 };
 
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v5';
+const DEMO_KEY = 'simevi-demo-v6';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -290,6 +300,13 @@ function seedDemo() {
     { id: 't10', codigo: `T-${y}-0027`, tipo: 'Reclamo', clienteId: 'c6', polizaId: 'p9', aseguradora: 'Quálitas', asunto: 'Rotura de parabrisas Isuzu C 118-302', descripcion: '', canal: 'Portal de la aseguradora', etapa: 'rechazado', numeroReclamo: 'QS-2026-5509', monto: 410, fechaSolicitud: D(-50), fechaIngreso: D(-49), responsable: SD, visibleCliente: true, notaCliente: 'Quálitas lo rechazó porque el deducible es mayor al daño.', docs: [], eventos: [ev(-50, 9, SD, 'etapa', 'Recibido.'), ev(-49, 10, SD, 'etapa', 'Ingresado.'), ev(-47, 10, SD, 'etapa', 'Número QS-2026-5509.'), ev(-41, 15, SD, 'etapa', 'Rechazado: deducible mayor al daño.')], ...by(SD, -50, 9), actualizado: ts(-41, 15), actualizadoPor: SD }
   ];
 
+  const evA = (n, h, mi, por, a, texto) => ({ fecha: ts(n, h, mi), por, tipo: 'etapa', a, texto });
+  Tm.push(
+    { id: 't11', codigo: `T-${y}-0041`, tipo: 'Reclamo', clienteId: 'c8', polizaId: 'p11', aseguradora: 'SISA', asunto: 'Reembolso de medicamentos de octubre', asegurado: 'Rosa Amelia Quintanilla', descripcion: 'Farmacia y consulta de control.', canal: 'Portal de la aseguradora', etapa: 'ingresado', numeroReclamo: '', monto: 96.3, fechaSolicitud: D(0), fechaIngreso: D(0), responsable: SD, visibleCliente: true, notaCliente: '', docs: [{ id: 'd10', name: 'Facturas octubre.pdf', size: 300000 }], eventos: [evA(0, 8, 5, SD, 'recibido', 'Recibido por correo de la clienta.'), evA(0, 9, 12, SD, 'ingresado', 'Ingresado en línea en el portal de SISA.')], ...by(SD, 0, 8), actualizado: ts(0, 9, 12), actualizadoPor: SD },
+    { id: 't12', codigo: `T-${y}-0042`, tipo: 'Reclamo', clienteId: 'c5', polizaId: 'p7', aseguradora: 'ASESUISA', asunto: 'Reembolso consulta pediatra', asegurado: 'Ana Lucía Portillo Cañas', paciente: 'Mateo Portillo', parentesco: 'Hijo(a)', descripcion: 'Consulta y receta.', canal: 'Entrega en físico', etapa: 'numero', numeroReclamo: 'GM-AS-2026-77310', monto: 45, fechaSolicitud: D(-1), fechaIngreso: D(0), responsable: R, visibleCliente: true, notaCliente: '', docs: [], eventos: [evA(-1, 11, 20, R, 'recibido', 'Recibido por correo.'), evA(0, 10, 40, R, 'ingresado', 'Entregado en físico en ASESUISA.'), evA(0, 14, 5, R, 'numero', 'Número asignado GM-AS-2026-77310.')], ...by(R, -1, 11), actualizado: ts(0, 14, 5), actualizadoPor: R },
+    { id: 't13', codigo: `T-${y}-0043`, tipo: 'Modificación', clienteId: 'c1', polizaId: 'p1', aseguradora: 'ASESUISA', asunto: 'Cambio de plan de Delmy Chicas', descripcion: 'De Operativo a Ejecutivo.', canal: 'Correo a la aseguradora', etapa: 'ingresado', numeroReclamo: '', monto: 0, fechaSolicitud: D(0), fechaIngreso: D(0), responsable: SD, visibleCliente: true, notaCliente: '', docs: [], eventos: [evA(0, 8, 30, SD, 'recibido', 'Recibido de RR. HH.'), evA(0, 11, 55, SD, 'ingresado', 'Enviado por correo a ASESUISA.')], ...by(SD, 0, 8), actualizado: ts(0, 11, 55), actualizadoPor: SD }
+  );
+
   const Pg = [
     { id: 'g1', tramiteId: 't1', clienteId: 'c8', aseguradora: 'SISA', forma: 'Cheque', numero: '00418821', banco: 'Banco Agrícola', monto: 171.25, fechaAviso: D(-3), fechaRecogido: D(-1), fechaEntregado: '', entregadoA: '', folio: '112', estado: 'oficina', notas: 'Aplicaron deducible de $15.15.', ...by(R, -3, 16), actualizado: ts(-1, 12), actualizadoPor: SD },
     { id: 'g2', tramiteId: 't7', clienteId: 'c1', aseguradora: 'Pan-American Life', forma: 'Depósito', numero: 'TRF-77120394', banco: 'Banco Cuscatlán', monto: 3132, fechaAviso: D(-9), fechaRecogido: '', fechaEntregado: D(-8), entregadoA: 'Cuenta de Karla Ventura', folio: '111', estado: 'depositado', notas: '', ...by(R, -9, 15), actualizado: ts(-8, 10), actualizadoPor: R },
@@ -297,9 +314,14 @@ function seedDemo() {
     { id: 'g4', tramiteId: '', clienteId: 'c2', aseguradora: 'Seguros del Pacífico', forma: 'Cheque', numero: '0098812', banco: 'Banco Davivienda', monto: 260, fechaAviso: D(0), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: 'disponible', notas: 'Devolución de prima por ajuste de suma asegurada.', ...by(R, 0, 8) }
   ];
 
-  const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '') => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body });
+  const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '', x = {}) => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body, cuenta: R, mid: `<${id}@demo>`, raiz: x.raiz || `<${id}@demo>`, respuesta: !!x.raiz, ...x });
   const inbox = [
-    mail('m9', 0, 10, 'mbonilla@injiboa.com.sv', 'Marta Bonilla (INJIBOA)', 'Reclamos gastos médicos semana 40', 'Buenos días, adjunto reclamos de gastos médicos de empleados para su trámite con la aseguradora. Saludos cordiales.', [{ id: 'a9', name: 'Reclamos semana 40.pdf', size: 1840000, mime: 'application/pdf', ocr: "CONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) AUGUSTO CESAR MARTINEZ BONILLA CERTIFICADO No.: 117\nASEGURADO:\n(Afectado) ADRIANA REBECA MARTINEZ JIMENEZ PARENTESCO: HIJA\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR HONORARIOS MÉDICOS US$15.00\n1 Factura(s) DE FARMACIA (Adjunto recetas) US$26.25\nTOTAL DE LA RECLAMACIÓN US$41.25\nINFORME MÉDICO SI NO Dr.: Teresa Ester Cea de Orellana\nNOMBRE: JUAN FRANCISCO CARRILLO MENDOZA\nCARGO: Encargado de Planillas/RRHH, INJIBOA, S.A. de C.V.\n\nFARMACIA SAN NICOLAS Factura 0045123 Acetaminofén 500 mg x 20 US$ 4.75 Amoxicilina 500 mg x 21 US$ 21.50\nRECETA MÉDICA Dra. Teresa Cea de Orellana Paciente: Adriana Martínez Indicaciones: tomar cada 8 horas\n\nCONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) JOSE MAURICIO LANDAVERDE FLORES CERTIFICADO No.: 203\nASEGURADO:\n(Afectado) JOSE MAURICIO LANDAVERDE FLORES PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR SERVICIOS DE LABORATORIO US$38.00\n1 Factura(s) POR HONORARIOS MÉDICOS US$30.00\nTOTAL DE LA RECLAMACIÓN US$68.00\nINFORME MÉDICO SI NO Dr.: Carlos Ernesto Rivas Alas" }]),
+    mail('m14', 0, 13, 'notificaciones@sisa.com.sv', 'SISA Notificaciones', 'Reclamos en análisis', 'Le informamos que el reclamo GM-RE-2026-51022 se encuentra en análisis por nuestro departamento médico.', [], 'Estimado corredor:\nLe informamos que el reclamo GM-RE-2026-51022 de la asegurada Rosa Amelia Quintanilla se encuentra en análisis por nuestro departamento médico.\nAtentamente, SISA.'),
+    mail('m13', 0, 12, 'notificaciones@sisa.com.sv', 'SISA Notificaciones', 'Aviso de reclamo', 'Se ha registrado el reclamo número GM-RE-2026-51022 a nombre de Rosa Amelia Quintanilla por US$96.30.', [], 'Estimado corredor:\nSe ha registrado el reclamo número GM-RE-2026-51022 a nombre de Rosa Amelia Quintanilla, póliza GM-I-298845, por US$96.30.\nAtentamente, SISA.'),
+    mail('m11', 0, 11, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla (INJIBOA)', 'RE: Reclamos gastos médicos semana 40', 'Buenas, se me olvidó la factura del laboratorio de José Mauricio. Se la adjunto. Saludos.', [{ id: 'a11', name: 'Factura laboratorio JM Landaverde.pdf', size: 120000, mime: 'application/pdf' }], 'Buenas, se me olvidó la factura del laboratorio de José Mauricio. Se la adjunto.\nSaludos.\n\nEl lun, 6 oct 2026 a las 10:02, Silvia de Díaz escribió:\n> Recibido, gracias.', { raiz: '<m9@demo>' }),
+    mail('m12', 0, 9, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla (INJIBOA)', 'RE: Consulta sobre deducible', 'Gracias Silvia, entonces el deducible aplica por evento. Saludos.', [], 'Gracias Silvia, entonces el deducible aplica por evento.\nSaludos.\n\nEl vie, 2 oct 2026 a las 15:40, Silvia de Díaz escribió:\n> El deducible es de $50 por evento.', { raiz: '<consulta-deducible@demo>' }),
+    mail('m10', 0, 7, 'notificaciones@sisa.com.sv', 'SISA Notificaciones', 'Solicitud de información · Reclamo VI-RC-2026-7731', 'Para continuar con el reclamo VI-RC-2026-7731 necesitamos la constancia de alta médica firmada.', [], 'Estimado corredor:\nPara continuar con el reclamo VI-RC-2026-7731 necesitamos la constancia de alta médica firmada por el médico tratante.\nAtentamente, SISA.'),
+    mail('m9', 0, 10, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla (INJIBOA)', 'Reclamos gastos médicos semana 40', 'Buenos días, adjunto reclamos de gastos médicos de empleados para su trámite con la aseguradora. Saludos cordiales.', [{ id: 'a9', name: 'Reclamos semana 40.pdf', size: 1840000, mime: 'application/pdf', ocr: "CONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) AUGUSTO CESAR MARTINEZ BONILLA CERTIFICADO No.: 117\nASEGURADO:\n(Afectado) ADRIANA REBECA MARTINEZ JIMENEZ PARENTESCO: HIJA\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR HONORARIOS MÉDICOS US$15.00\n1 Factura(s) DE FARMACIA (Adjunto recetas) US$26.25\nTOTAL DE LA RECLAMACIÓN US$41.25\nINFORME MÉDICO SI NO Dr.: Teresa Ester Cea de Orellana\nNOMBRE: JUAN FRANCISCO CARRILLO MENDOZA\nCARGO: Encargado de Planillas/RRHH, INJIBOA, S.A. de C.V.\n\nFARMACIA SAN NICOLAS Factura 0045123 Acetaminofén 500 mg x 20 US$ 4.75 Amoxicilina 500 mg x 21 US$ 21.50\nRECETA MÉDICA Dra. Teresa Cea de Orellana Paciente: Adriana Martínez Indicaciones: tomar cada 8 horas\n\nCONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) JOSE MAURICIO LANDAVERDE FLORES CERTIFICADO No.: 203\nASEGURADO:\n(Afectado) JOSE MAURICIO LANDAVERDE FLORES PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR SERVICIOS DE LABORATORIO US$38.00\n1 Factura(s) POR HONORARIOS MÉDICOS US$30.00\nTOTAL DE LA RECLAMACIÓN US$68.00\nINFORME MÉDICO SI NO Dr.: Carlos Ernesto Rivas Alas" }]),
     mail('m7', 0, 9, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Reembolsos de gastos médicos de septiembre', 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American…', [
       { id: 'a6', name: 'Reembolso Karla Ventura.pdf', size: 410000, mime: 'application/pdf' },
       { id: 'a7', name: 'Reembolso Luis Pineda.pdf', size: 655000, mime: 'application/pdf' },
@@ -328,7 +350,8 @@ function seedDemo() {
     ['ricardo', -8, 'movió', 'tramites', 't7', `T-${y}-0029 a Cerrado`]
   ].map(([w, n, accion, tabla, ref, resumen], i) => ({ id: 'b' + i, fecha: ts(Math.floor(n), n % 1 ? 11 : 9 + i % 8, (i * 13) % 60), por: w === 'ricardo' ? R : SD, accion, tabla, ref, resumen }));
 
-  const Aj = [{ id: 'remitentes', valor: 'injiboa.com.sv, sisa.com.sv, palig.com, fedecredito.com.sv', ...by(R, -1, 9) }];
+  const Aj = [{ id: 'remitentes', valor: 'injiboa.com.sv, hibronsa.com.sv', ...by(R, -1, 9) }, { id: 'aseg-dominios', valor: 'sisa.com.sv = SISA\npalig.com = Pan-American Life\nfedecredito.com.sv = Seguros Fedecrédito\nasesuisa.com = ASESUISA', ...by(R, -1, 9) },
+    { id: 'auto-remitentes', valor: 'mbonilla@injiboa.com.sv', ...by(R, -1, 9) }, { id: 'auto-desde', valor: ts(0, 0, 1), ...by(R, -1, 9) }, { id: 'migr-remit-1', valor: '1', ...by(R, -1, 9) }];
   return { clientes: C, polizas: P, tramites: Tm, pagos: Pg, bitacora: bit, correos: Co, ajustes: Aj, inbox };
 }
 
@@ -435,7 +458,7 @@ function counts() {
   return {
     tramites: DB.tramites.filter(t => t.etapa === 'recibido').length,
     pagos: DB.pagos.filter(pagoAbierto).length,
-    bandeja: S.inbox ? correosVisibles().filter(m => !mailDone(m)).length : 0
+    bandeja: S.inbox ? correosVisibles().filter(m => !mailDone(m) && !(esRespuesta(m) && !estadoDeCorreo(m, aseguradoraDeCorreo(m.from)))).length : 0
   };
 }
 
@@ -648,15 +671,15 @@ VIEWS.tramites = () => {
   if (!DB.tramites.length) body = emptyState('folder-open', 'Aún no hay trámites', 'Crea el primero o conviértelo desde un correo en la Bandeja.', `<button class="btn primary" type="button" data-act="new-tramite">${ic('plus')}Nuevo trámite</button>`);
   else if (f.tVista === 'lista') body = tramitesTabla(list);
   else {
-    const cols = ETAPAS.filter(e => e.k !== 'cerrado' || f.tCerrados);
-    const colors = { recibido: 'var(--info)', ingresado: 'var(--muted)', numero: 'var(--acc)', analisis: 'var(--acc-hi)', pago: 'var(--ok)', cerrado: 'var(--ok)' };
+    const cols = ETAPAS.filter(e => (e.k !== 'cerrado' || f.tCerrados) && (e.k !== 'requerido' || list.some(t => t.etapa === 'requerido')));
+    const colors = { recibido: 'var(--info)', ingresado: 'var(--muted)', numero: 'var(--acc)', analisis: 'var(--acc-hi)', requerido: 'var(--warn)', pago: 'var(--ok)', cerrado: 'var(--ok)' };
     body = `<div class="board">${cols.map(e => {
       const items = list.filter(t => t.etapa === e.k || (e.k === 'cerrado' && t.etapa === 'rechazado'));
       return `<section class="col" aria-label="${e.n}"><div class="col-h"><span class="dot" style="--c:${colors[e.k]}"></span><h3>${e.n}</h3><span class="n">${items.length}</span></div>
         <div class="col-b">${items.length ? items.map(tkCard).join('') : `<div class="col-empty">${e.k === 'recibido' ? 'Las solicitudes nuevas llegan aquí' : 'Nada en esta etapa'}</div>`}</div></section>`;
     }).join('')}</div>`;
   }
-  return head('Trámites', 'Reclamos, modificaciones y renovaciones, desde que llega el correo hasta que el cliente recibe su pago.', `<button class="btn primary" type="button" data-act="new-tramite">${ic('plus')}Nuevo trámite</button>`) + tools + body;
+  return head('Trámites', 'Reclamos, modificaciones y renovaciones, desde que llega el correo hasta que el cliente recibe su pago.', `<button class="btn" type="button" data-act="rep-open" data-v="todos">${ic('clipboard-text')}Reporte</button><button class="btn primary" type="button" data-act="new-tramite">${ic('plus')}Nuevo trámite</button>`) + tools + body;
 };
 
 function tramitesTabla(list) {
@@ -714,12 +737,13 @@ function openTramite(id, prefill = {}) {
 }
 
 function tramiteHTML(t, isNew) {
-  const etapas = etapasDe(t.tipo);
+  // "Solicitud de información" solo aparece en la barra si la aseguradora la pidió
+  const etapas = etapasDe(t.tipo).filter(e => e.k !== 'requerido' || t.etapa === 'requerido' || (t.eventos || []).some(x => x.a === 'requerido'));
   const idx = etapas.findIndex(e => e.k === t.etapa);
   const rech = t.etapa === 'rechazado';
   const nowIdx = rech ? etapas.length - 1 : idx;
   const pagos = DB.pagos.filter(p => p.tramiteId === t.id);
-  const next = !rech && idx >= 0 && idx < etapas.length - 1 ? etapas[idx + 1] : null;
+  const next = siguienteEtapa(t);
   return `
   <div class="drawer-h"><div class="t"><span class="label">${isNew ? 'Nuevo trámite' : esc(t.tipo)} · <span style="color:var(--acc-hi)">${esc(t.codigo)}</span></span>
     <h2>${isNew ? 'Registrar solicitud' : esc(clienteNombre(t.clienteId))}</h2>${!isNew ? `<div class="muted" style="font-size:.86rem;margin-top:4px">${esc(t.asunto || '')}</div>` : ''}</div>
@@ -763,7 +787,7 @@ function tramiteHTML(t, isNew) {
     ${pagos.length || t.tipo === 'Reclamo' ? `<div class="sec"><div class="label">Pagos</div>${pagos.length ? `<div class="docs">${pagos.map(p => `<button class="doc" type="button" data-act="open-pago" data-id="${p.id}">${ic('money-wavy')}<span>${esc(p.forma)} ${esc(p.numero || '')} · ${fmtMoney(p.monto)}</span><span class="pill ${PAGO_E[p.estado]?.cls}">${esc(PAGO_E[p.estado]?.n)}</span></button>`).join('')}</div>` : ''}
       <button class="btn sm" type="button" data-act="pago-from-tramite" style="margin-top:8px">${ic('plus')}Registrar cheque o depósito</button></div>` : ''}
     <div class="sec"><div class="label">Seguimiento</div>
-      <ol class="tl">${(t.eventos || []).slice().reverse().map(e => `<li class="${e.tipo === 'etapa' ? 'stage' : ''}"><div class="when2">${av(e.por, 'sm')}${esc(firstName(userBy(e.por)))} · ${fmtDate(e.fecha)}, ${fmtTime(e.fecha)}</div><p>${esc(e.texto)}</p></li>`).join('') || '<li><p class="muted">Sin movimientos todavía.</p></li>'}</ol>
+      <ol class="tl">${(t.eventos || []).slice().reverse().map(e => `<li class="${e.tipo === 'etapa' ? 'stage' : e.tipo === 'correo' ? 'mailev' : ''}"><div class="when2">${av(e.por, 'sm')}${esc(firstName(userBy(e.por)))} · ${fmtDate(e.fecha)}, ${fmtTime(e.fecha)}${e.auto ? '<span class="pill" style="margin-left:6px">automático</span>' : ''}</div><p>${e.tipo === 'correo' || e.correo ? ic('envelope-simple') : ''}${esc(e.texto)}</p></li>`).join('') || '<li><p class="muted">Sin movimientos todavía.</p></li>'}</ol>
       <div class="note-add"><label class="sr" for="note">Nota</label><input type="text" id="note" placeholder="Agregar nota: llamada, visita, lo que dijo la aseguradora…"><button class="btn" type="button" data-act="add-note">Anotar</button></div>
     </div>
     ${authors(t)}` : ''}
@@ -808,13 +832,13 @@ async function saveTramite(advanceTo) {
   let resumen = `${t.codigo} ${t.tipo} · ${clienteNombre(t.clienteId)}`;
   let accion;
   t.eventos = t.eventos || [];
-  if (isNew) t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${ETAPA[t.etapa]?.n || 'Recibido'}: ${t.asunto}` });
+  if (isNew) t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: t.etapa, texto: `${ETAPA[t.etapa]?.n || 'Recibido'}: ${t.asunto}` });
   if (advanceTo) {
     if (advanceTo === 'numero' && !t.numeroReclamo) { toast('Escribe primero el número que dio la aseguradora', 'err'); $('#frm [name=numeroReclamo]').focus(); return; }
     if (advanceTo === 'ingresado' && !t.fechaIngreso) t.fechaIngreso = todayISO();
-    const txt = advanceTo === 'numero' ? `Número asignado ${t.numeroReclamo}.` : advanceTo === 'ingresado' ? `Ingresado (${t.canal.toLowerCase()}).` : advanceTo === 'rechazado' ? 'Rechazado por la aseguradora.' : `${ETAPA[advanceTo]?.n}.`;
+    const txt = advanceTo === 'numero' ? `Número asignado ${t.numeroReclamo}.` : advanceTo === 'ingresado' ? `Ingresado (${t.canal.toLowerCase()}).` : advanceTo === 'rechazado' ? 'Rechazado por la aseguradora.' : advanceTo === 'requerido' ? 'La aseguradora pidió más información.' : advanceTo === 'analisis' && t.etapa === 'requerido' ? 'Información enviada a la aseguradora.' : `${ETAPA[advanceTo]?.n}.`;
     t.etapa = advanceTo;
-    t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: txt });
+    t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: advanceTo, texto: txt });
     resumen = `${t.codigo} a ${advanceTo === 'rechazado' ? 'Rechazado' : ETAPA[advanceTo].n}${advanceTo === 'numero' ? ` (${t.numeroReclamo})` : ''}`;
     accion = 'movió';
   }
@@ -836,12 +860,13 @@ function newPagoFromTramite(t) {
 function tramiteMoreMenu(btn) {
   const t = cur.row;
   const items = [
+    ...(t.etapa !== 'requerido' && tramiteAbierto(t) ? [['requerido', 'Piden información', 'note-pencil']] : []),
     ['rechazado', 'Marcar como rechazado', 'warning'],
     ['copy-link', 'Copiar enlace del cliente', 'link-simple'],
     ['delete', 'Eliminar trámite', 'trash']
   ];
   popMenu(btn, items, async k => {
-    if (k === 'rechazado') return saveTramite('rechazado');
+    if (k === 'rechazado' || k === 'requerido') return saveTramite(k);
     if (k === 'copy-link') return copyPortal(t.clienteId);
     if (k === 'delete') {
       if (!await ask(`¿Eliminar ${t.codigo}? Queda anotado en la bitácora.`, { danger: true, ok: 'Eliminar' })) return;
@@ -1127,7 +1152,7 @@ function campos(st, pre) {
 /* Crea lo que falte (cliente, póliza, asegurado en la colectiva) antes de guardar el reclamo */
 async function asegurarEntidades(st, aseguradora = '') {
   if (!st.clienteId) {
-    const nombre = limpiar(st.clienteTxt || '');
+    const nombre = limpiar(st.clienteTxt || '').replace(/(c\.\s*v)$/i, '$1.');
     if (!nombre) throw new Error('Falta el cliente');
     const ya = DB.clientes.find(c => norm(c.nombre) === norm(nombre)) || clientePorNombre(nombre);
     if (ya) st.clienteId = ya.id;
@@ -1165,8 +1190,8 @@ function nuevoReclamo(st, { etapa = 'ingresado', fecha, gmailId = '', docs = [],
   const p = poliza(st.polizaId);
   const e = st.numero ? 'numero' : etapa;
   const quien = st.paciente || st.asegurado || shortName(clienteNombre(st.clienteId));
-  const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: origen || (e === 'recibido' ? 'Recibido.' : `Ingresado a ${p?.aseguradora || aseguradora || 'la aseguradora'}.`) }];
-  if (st.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${st.numero}.` });
+  const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: e, texto: origen || (e === 'recibido' ? 'Recibido.' : `Ingresado a ${p?.aseguradora || aseguradora || 'la aseguradora'}.`) }];
+  if (st.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'numero', texto: `Número asignado ${st.numero}.` });
   return {
     id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: st.clienteId, polizaId: st.polizaId, aseguradora: p?.aseguradora || aseguradora || '',
     asegurado: st.asegurado || clienteNombre(st.clienteId), certificado: st.certificado, paciente: st.paciente, parentesco: st.paciente ? st.parentesco : '',
@@ -1190,7 +1215,7 @@ VIEWS.reclamos = () => {
   const seg = [['abiertos', 'Abiertos'], ['sinnum', `Sin número${sinNum ? ' · ' + sinNum : ''}`], ['todos', 'Todos']];
   const c = campos(RX, 'rx');
 
-  return head('Reclamos', 'Cliente, póliza, asegurado y, si es un dependiente, el paciente. Las listas buscan mientras escribes; lo que no exista se crea al guardar. Si adjuntas el formulario en PDF, se llena solo.') + `
+  return head('Reclamos', 'Cliente, póliza, asegurado y, si es un dependiente, el paciente. Las listas buscan mientras escribes; lo que no exista se crea al guardar. Si adjuntas el formulario en PDF, se llena solo.', `<button class="btn" type="button" data-act="rep-open" data-v="reclamos">${ic('clipboard-text')}Reporte de ingresados</button>`) + `
   <div class="rx-entry">
     <span class="rx-title">Nuevo reclamo</span>
     <form class="rx-new" id="rx-new" data-row="rx" autocomplete="off">
@@ -1359,7 +1384,7 @@ document.addEventListener('change', async e => {
     let accion, resumen = `${t.codigo} ${k === 'numeroReclamo' ? 'número ' + (v || '(borrado)') : 'nota: ' + v.slice(0, 60)}`;
     if (k === 'numeroReclamo' && v && ['recibido', 'ingresado'].includes(t.etapa)) {
       t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO();
-      t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${v}.` }];
+      t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'numero', texto: `Número asignado ${v}.` }];
       accion = 'movió'; resumen = `${t.codigo} a Número asignado (${v})`;
     }
     try { await save('tramites', t, resumen, accion); el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 900); toast(accion ? `${t.codigo}: Número asignado` : 'Guardado'); if (accion) render(false); } catch (err) { }
@@ -1420,7 +1445,7 @@ async function marcarIngresadoPortal(id) {
   const t = structuredClone(t0);
   const pt = portalDe(t.aseguradora || poliza(t.polizaId)?.aseguradora);
   t.etapa = 'ingresado'; t.canal = 'Portal de la aseguradora'; t.fechaIngreso = t.fechaIngreso || todayISO();
-  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Ingresado en línea en el portal de ${pt?.nombre || t.aseguradora || 'la aseguradora'}.` }];
+  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'ingresado', texto: `Ingresado en línea en el portal de ${pt?.nombre || t.aseguradora || 'la aseguradora'}.` }];
   try { await save('tramites', t, `${t.codigo} a Ingresado (en línea)`, 'movió'); } catch (e) { return; }
   PORTAL_ABIERTO.delete(id);
   toast(`${t.codigo}: Ingresado`);
@@ -1529,11 +1554,11 @@ async function savePago(to) {
 async function linkPagoTramite(p, isNew) {
   const t = tramite(p.tramiteId);
   if (t && isNew && tramiteAbierto(t) && t.etapa !== 'pago') {
-    t.etapa = 'pago'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.forma} disponible por ${fmtMoney(p.monto)}.` }];
+    t.etapa = 'pago'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'pago', texto: `${p.forma} disponible por ${fmtMoney(p.monto)}.` }];
     await save('tramites', t, `${t.codigo} a Pago disponible`, 'movió').catch(() => { });
   }
   if (t && !pagoAbierto(p) && tramiteAbierto(t)) {
-    t.etapa = 'cerrado'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.estado === 'depositado' ? 'Depositado' : 'Entregado a ' + p.entregadoA}. Cerrado.` }];
+    t.etapa = 'cerrado'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'cerrado', texto: `${p.estado === 'depositado' ? 'Depositado' : 'Entregado a ' + p.entregadoA}. Cerrado.` }];
     await save('tramites', t, `${t.codigo} a Cerrado`, 'movió').catch(() => { });
   }
 }
@@ -1745,7 +1770,7 @@ async function renderPortal(tok) {
   const abiertos = data.tramites.filter(t => t.etapa !== 'cerrado' && t.etapa !== 'rechazado');
   const cerrados = data.tramites.filter(t => !abiertos.includes(t));
   const card = t => {
-    const et = etapasDe(t.tipo); const rech = t.etapa === 'rechazado';
+    const et = etapasDe(t.tipo).filter(e => e.k !== 'requerido' || t.etapa === 'requerido'); const rech = t.etapa === 'rechazado';
     const idx = rech ? et.length - 1 : et.findIndex(e => e.k === t.etapa);
     return `<article class="panel ptk"><div class="row"><div><span class="label">${esc(t.tipo)}${t.numeroReclamo ? ` · N.º ${esc(t.numeroReclamo)}` : ''}</span><h3>${esc(t.asunto || t.tipo)}</h3></div><span class="pill ${rech ? 'bad' : t.etapa === 'cerrado' || t.etapa === 'pago' ? 'ok' : 'gold'}">${rech ? 'No aprobado' : esc(ETAPA[t.etapa]?.c || '')}</span></div>
       <ol class="steps ${rech ? 'bad' : ''}" style="margin-top:14px">${et.map((e, i) => `<li class="${i < idx ? 'done' : i === idx ? 'now' : ''}"><div class="bar"></div><span>${esc(e.c)}</span></li>`).join('')}</ol>
@@ -1768,31 +1793,46 @@ const DOMINIOS = { sisa: 'SISA', asesuisa: 'ASESUISA', pacifico: 'Seguros del Pa
 const DEFAULT_GMAIL_Q = 'newer_than:30d -category:promotions -category:social -category:updates';
 
 /* Remitentes de confianza: la Bandeja solo trae correos de estos dominios o direcciones
-   (más los correos de los clientes registrados), para no revisar todo Gmail. */
-const REMITENTES_BASE = 'injiboa.com.sv, sisa.com.sv';
+   (más las aseguradoras y los correos de los clientes registrados), para no revisar todo Gmail. */
+const REMITENTES_BASE = 'injiboa.com.sv, hibronsa.com.sv';
+// Dominios de aseguradoras: sus correos mueven los trámites solos (aviso de reclamo, análisis, cheque…)
+const ASEG_DOMINIOS_BASE = 'sisa.com.sv = SISA\npalig.com = Pan-American Life\nasesuisa.com = ASESUISA\nmapfre.com.sv = MAPFRE La Centro Americana';
+// Remitentes que solo mandan reclamos o modificaciones: sus correos nuevos se vuelven trámites solos
+const AUTO_BASE = 'mbonilla@injiboa.com.sv';
 const ajuste = (id, def) => DB.ajustes.find(a => a.id === id)?.valor ?? def;
-const remitentes = () => [...new Set(String(ajuste('remitentes', REMITENTES_BASE)).split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean))];
+const listaCorreos = v => [...new Set(String(v || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean))];
+const coincide = (from, l) => { const f = String(from || '').toLowerCase(); return l.some(x => x.includes('@') ? f === x : (f.endsWith('@' + x) || f.endsWith('.' + x))); };
+const remitentes = () => listaCorreos(ajuste('remitentes', REMITENTES_BASE));
+const autoRemitentes = () => listaCorreos(ajuste('auto-remitentes', AUTO_BASE));
 const conClientes = () => ajuste('remitentes-clientes', 'si') !== 'no';
+function asegDominios() {
+  return String(ajuste('aseg-dominios', ASEG_DOMINIOS_BASE)).split(/\n|;/).map(l => l.split(/=|:/)).map(([d, n]) => ({ dom: listaCorreos(d)[0] || '', nombre: (n || '').trim() })).filter(x => x.dom);
+}
 function filtroCorreos() {
-  const l = remitentes();
+  const l = [...remitentes(), ...autoRemitentes(), ...asegDominios().map(x => x.dom)];
   if (conClientes()) DB.clientes.forEach(c => { if (c.correo) l.push(c.correo.toLowerCase().trim()); });
   return [...new Set(l)];
 }
-function deConfianza(from) {
-  const f = String(from || '').toLowerCase();
-  return filtroCorreos().some(x => x.includes('@') ? f === x : (f.endsWith('@' + x) || f.endsWith('.' + x)));
-}
+const deConfianza = from => coincide(from, filtroCorreos());
 function gmailQuery() {
   if (S.f.bandejaTodos) return S.f.gmailQ || DEFAULT_GMAIL_Q;
   const l = filtroCorreos();
   return l.length ? `newer_than:30d from:(${l.join(' OR ')})` : DEFAULT_GMAIL_Q;
 }
+// Respuestas dentro de una conversación anterior: no crean trámites nuevos
+const esRespuesta = m => !!m.respuesta || /^\s*(re|rv|fw|fwd|res)\s*:/i.test(m.subject || '');
 const correosVisibles = () => (S.inbox || []).filter(m => S.f.bandejaTodos || deConfianza(m.from));
 const buzonNombre = c => firstName(S.users.find(u => u.email === c)) || c.split('@')[0];
-const mailDone = m => DB.correos.some(c => c.id === m.id);
+// El mismo correo llega a Silvia y a Ricardo con distinto id; el Message-ID los une.
+const mailKey = m => m.mid ? 'm:' + m.mid.replace(/[<>\s]/g, '') : m.id;
+const mailRow = m => DB.correos.find(c => c.id === m.id || c.id === mailKey(m));
+const mailDone = m => !!mailRow(m);
 
 function aseguradoraDeCorreo(from) {
-  const dom = norm(String(from).split('@')[1] || '');
+  const f = String(from || '').toLowerCase();
+  const x = asegDominios().find(x => coincide(f, [x.dom]));
+  if (x) return x.nombre || x.dom;
+  const dom = norm(f.split('@')[1] || '');
   for (const k in DOMINIOS) if (dom.includes(k)) return DOMINIOS[k];
   return '';
 }
@@ -1831,6 +1871,18 @@ function classify(m) {
   if (!t && r.polizaId) t = DB.tramites.filter(t => t.polizaId === r.polizaId && tramiteAbierto(t)).sort((a, b) => ETAPAS.findIndex(e => e.k === a.etapa) - ETAPAS.findIndex(e => e.k === b.etapa))[0];
   if (!t && r.kind !== 'solicitud' && r.clienteId) t = DB.tramites.find(t => t.clienteId === r.clienteId && tramiteAbierto(t) && (!r.aseguradora || t.aseguradora === r.aseguradora));
   if (t) { r.tramiteId = t.id; r.clienteId = r.clienteId || t.clienteId; if (r.reclamo === t.numeroReclamo && r.kind === 'numero') r.kind = 'info'; }
+  // Avisos de la aseguradora (Aviso de reclamo, En análisis, Solicitud de información, Cheque, Transferencia)
+  r.estado = estadoDeCorreo(m, r.aseguradora);
+  if (r.estado) {
+    r.kind = r.estado.etapa === 'pago' ? 'pago' : r.estado.etapa === 'numero' ? 'numero' : 'estado';
+    if (r.estado.forma) r.forma = r.estado.forma;
+    r.numero = r.numero || cheque?.[1] || ref?.[1] || '';
+    const x = tramiteParaEstado(m, r);
+    r.tramiteId = x?.t?.id || ''; r.dudas = x?.dudas || []; r.por = x?.por || '';
+    const tt = x?.t;
+    if (tt) { r.clienteId = tt.clienteId; r.polizaId = r.polizaId || tt.polizaId; }
+    if (tt && r.estado.etapa === 'numero' && tt.numeroReclamo && (!r.reclamo || norm(tt.numeroReclamo) === norm(r.reclamo)) && rangoEtapa(tt.etapa) >= 2) r.kind = 'info';
+  } else if (esRespuesta(m)) r.conversacion = true;
   return r;
 }
 
@@ -1841,74 +1893,120 @@ async function loadInbox(force) {
   if (S.route === 'bandeja') render(false);
   try {
     const d = await api('api/gmail?q=' + encodeURIComponent(gmailQuery()));
-    S.inbox = d.messages || [];
+    // El mismo correo en los dos buzones se muestra una sola vez
+    const vistos = new Map();
+    for (const m of d.messages || []) {
+      const k = mailKey(m), prev = vistos.get(k);
+      if (prev) { if (!prev.cuentas.includes(m.cuenta)) prev.cuentas.push(m.cuenta); }
+      else { m.cuentas = [m.cuenta]; vistos.set(k, m); }
+    }
+    S.inbox = [...vistos.values()];
+    S.inboxAt = Date.now();
     S.buzones = d.buzones || [];
     if (d.errores?.length) S.inboxErr = d.errores.map(x => `${x.cuenta}: ${x.message}`).join(' · ');
   } catch (e) { S.inboxErr = e.message; S.inboxCode = e.data?.code || ''; S.inbox = S.inbox || []; }
   S.inboxLoading = false;
   render(false);
+  if (S.inbox?.length && !S.inboxErr) procesarAuto();
 }
 
 VIEWS.bandeja = () => {
   if (!S.inbox && !S.inboxLoading) setTimeout(() => loadInbox());
   const f = S.f;
-  const all = correosVisibles();
-  const list = all.filter(m => f.bandeja === 'pend' ? !mailDone(m) : mailDone(m));
-  const kinds = { solicitud: ['Nueva solicitud', 'info'], numero: ['Número de reclamo', 'gold'], pago: ['Pago disponible', 'ok'], info: ['Ya registrado', ''] };
-  const rows = list.map(m => {
-    const k = classify(m);
-    const t = tramite(k.tramiteId), c = cliente(k.clienteId);
-    const done = DB.correos.find(x => x.id === m.id);
+  const todos = correosVisibles().map(m => ({ m, k: classify(m), done: mailRow(m) }));
+  const enPend = x => !x.done && !x.k.conversacion;
+  const enConv = x => !x.done && x.k.conversacion;
+  const list = todos.filter(f.bandeja === 'hechos' ? x => x.done : f.bandeja === 'conv' ? enConv : enPend);
+  const btn = (act, id, label, cls = '', icon = '', extra = '') => `<button class="btn ${cls} sm" type="button" data-act="${act}" data-id="${esc(id)}" ${extra}>${icon ? ic(icon) : ''}${label}</button>`;
+  const rows = list.map(({ m, k, done }) => {
+    const t = done ? tramite(done.tramiteId) : tramite(k.tramiteId);
+    const c = cliente(t?.clienteId || k.clienteId);
+    if (done) k.por = '';
     let acts = '';
-    const x = !done ? extraer(m) : null;
+    const x = !done && !k.conversacion ? extraer(m) : null;
     const varios = x && x.rows.length > 1;
-    const pdfs = !done && (m.attachments || []).some(a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name));
-    if (pdfs) acts += `<button class="btn primary sm" type="button" data-act="mail-leer" data-id="${esc(m.id)}">${ic('sparkle')}Leer reclamos del PDF</button>`;
-    if (varios) {
-      acts += `<button class="btn ${pdfs ? '' : 'primary'} sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">${ic('list-bullets')}Revisar los ${x.rows.length}</button>`;
-      acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
-    } else if (!done) {
-      if (k.kind === 'pago') acts += `<button class="btn primary sm" type="button" data-act="mail-pago" data-id="${esc(m.id)}">${ic('hand-coins')}Registrar pago</button>`;
-      else if (k.kind === 'numero') acts += `<button class="btn primary sm" type="button" data-act="mail-numero" data-id="${esc(m.id)}">${ic('seal-check')}${t ? 'Poner número en ' + esc(t.codigo) : 'Asignar a un trámite'}</button>`;
-      else acts += `<button class="btn ${pdfs ? '' : 'primary'} sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">${ic('plus')}Crear trámite</button>`;
-      if (k.kind !== 'solicitud') acts += `<button class="btn sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">Crear trámite</button>`;
-      if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += `<button class="btn sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">Separar en varios</button>`;
-      acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
-    } else acts = `<span class="tag">${av(done.creadoPor, 'sm')}${esc(done.nota || 'Procesado')}</span>`;
+    const pdfs = !done && !k.estado && (m.attachments || []).some(esPdf);
+    const auto = coincide(m.from, autoRemitentes());
+    let pill;
+    if (done) {
+      acts = `<span class="tag">${av(done.creadoPor, 'sm')}${esc(done.nota || 'Procesado')}</span>`;
+      const td = tramite(done.tramiteId);
+      if (td) acts += btn('open-tramite', td.id, 'Abrir ' + esc(td.codigo), 'ghost', 'folder-open');
+      acts += btn('mail-volver', m.id, 'Devolver a revisar', 'ghost');
+    } else if (k.estado) {
+      const dest = k.estado.etapa === 'numero' ? 'el número' : k.estado.etapa === 'pago' ? 'el pago' : `“${k.estado.etapa === 'rechazado' ? 'Rechazado' : ETAPA[k.estado.etapa].n}”`;
+      if (varios) acts += btn('mail-varios', m.id, `Revisar los ${x.rows.length}`, 'primary', 'list-bullets');
+      else if (k.kind === 'info') acts += `<span class="tag">${ic('check')}${t ? esc(t.codigo) + ' ya lo tiene' : 'Ya registrado'}</span>`;
+      else if (t) acts += btn('mail-estado', m.id, `${k.kind === 'pago' ? 'Registrar pago en' : 'Poner ' + dest + ' en'} ${esc(t.codigo)}`, 'primary', k.kind === 'pago' ? 'hand-coins' : 'seal-check');
+      else acts += btn('mail-estado', m.id, k.dudas?.length ? `¿Cuál de ${k.dudas.length}? Elegir trámite` : 'Elegir trámite', 'primary', 'folder-open', 'data-pick="1"');
+      if (t && k.kind !== 'info' && !varios) acts += btn('mail-estado', m.id, 'Otro trámite', 'ghost', '', 'data-pick="1"');
+      if (!t && !varios && k.kind === 'pago') acts += btn('mail-pago', m.id, 'Registrar pago suelto');
+      acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
+      pill = `<span class="pill ${{ requerido: 'warn', rechazado: 'bad', pago: 'ok' }[k.estado.etapa] || 'gold'}">${esc(k.estado.n)}${varios ? ` · ${x.rows.length}` : ''}</span>`;
+    } else if (k.conversacion) {
+      const th = tramitePorHilo(m.raiz);
+      if (th) acts += btn('mail-novedad', m.id, 'Agregar a ' + esc(th.codigo), 'primary', 'plus');
+      acts += btn('mail-novedad', m.id, th ? 'Otro trámite' : 'Agregar a un trámite', th ? 'ghost' : '', th ? '' : 'folder-open', 'data-pick="1"');
+      acts += btn('mail-tramite', m.id, 'Es nuevo: crear trámite', 'ghost');
+      acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
+      pill = `<span class="pill">Conversación</span>`;
+    } else {
+      if (pdfs) acts += btn('mail-leer', m.id, 'Leer reclamos del PDF', 'primary', 'sparkle');
+      if (varios) {
+        acts += btn('mail-varios', m.id, `Revisar los ${x.rows.length}`, pdfs ? '' : 'primary', 'list-bullets');
+      } else {
+        if (k.kind === 'pago') acts += btn('mail-pago', m.id, 'Registrar pago', 'primary', 'hand-coins');
+        else if (k.kind === 'numero') acts += btn('mail-numero', m.id, t ? 'Poner número en ' + esc(t.codigo) : 'Asignar a un trámite', 'primary', 'seal-check');
+        else acts += btn('mail-tramite', m.id, 'Crear trámite', pdfs ? '' : 'primary', 'plus');
+        if (k.kind !== 'solicitud') acts += btn('mail-tramite', m.id, 'Crear trámite');
+        if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += btn('mail-varios', m.id, 'Separar en varios');
+      }
+      acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
+      pill = varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>`
+        : k.kind === 'solicitud' ? `<span class="pill ${auto ? 'warn' : 'info'}">${auto ? 'Para revisar' : 'Nueva solicitud'}</span>`
+        : `<span class="pill ${{ numero: 'gold', pago: 'ok', info: '' }[k.kind]}">${{ numero: 'Número de reclamo', pago: 'Pago disponible', info: 'Ya registrado' }[k.kind]}</span>`;
+    }
+    if (done) pill = done.estado === 'auto' ? `<span class="pill gold">${ic('sparkle')}Automático</span>` : '';
     if (S.mode === 'live') acts += `<a class="btn ghost sm" href="https://mail.google.com/mail/?authuser=${encodeURIComponent(m.cuenta || '')}#all/${esc(m.threadId || m.id)}" target="_blank" rel="noopener">${ic('arrow-square-out')}Gmail</a>`;
+    const para = (S.buzones || []).length > 1 && (m.cuentas || [m.cuenta]).filter(Boolean);
     return `<article class="mail ${done ? 'done' : ''}">
-      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b>${(S.buzones || []).length > 1 && m.cuenta ? `<span class="pill">Para ${esc(buzonNombre(m.cuenta))}</span>` : ''}<span class="faint">${fmtAgo(m.fecha)}</span>${varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>` : `<span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span>`}</div>
+      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b>${para && para.length ? `<span class="pill">Para ${esc(para.map(buzonNombre).join(' y '))}</span>` : ''}<span class="faint">${fmtAgo(m.fecha)}</span>${pill || ''}</div>
       <h3>${esc(m.subject || '(sin asunto)')}</h3>
-      <p>${esc(m.snippet || '')}</p>
+      <p>${esc(k.conversacion ? resumenCuerpo(m, 220) : m.snippet || '')}</p>
       <div class="found">
         ${varios ? x.rows.map(r => `<span class="tag">${ic('user')}${esc(shortName(r.asegurado || 'Sin nombre'))}${r.numero ? ' · ' + esc(r.numero) : ''}${r.cheque ? ' · ch. ' + esc(r.cheque) : ''}${r.monto ? ' · ' + fmtMoney(r.monto) : ''}</span>`).join('') : c ? `<span class="tag">${ic('user')}${esc(c.nombre.split(',')[0])}</span>` : `<span class="tag faint">${ic('user')}Cliente no reconocido</span>`}
         ${k.polizaNum ? `<span class="tag">${ic('shield-check')}${esc(k.polizaNum)}</span>` : ''}
         ${k.reclamo && !varios ? `<span class="tag">${ic('seal-check')}${esc(k.reclamo)}</span>` : ''}
         ${k.monto && !varios ? `<span class="tag">${ic('money-wavy')}${fmtMoney(k.monto)}</span>` : ''}
-        ${t && !varios ? `<span class="tag">${ic('folder-open')}${esc(t.codigo)}</span>` : ''}
+        ${t && !varios ? `<span class="tag">${ic('folder-open')}${esc(t.codigo)}${t.paciente || t.asegurado ? ' · ' + esc(shortName(t.paciente || t.asegurado)) : ''}${k.por ? ` <span class="faint">(por ${esc(k.por)})</span>` : ''}</span>` : ''}
+        ${!t && k.dudas?.length ? `<span class="tag faint">Puede ser ${k.dudas.map(d => esc(d.codigo)).join(', ')}</span>` : ''}
         ${(m.attachments || []).map(a => `<span class="attach">${ic('paperclip')}${esc(a.name)}</span>`).join('')}
       </div>
       <div class="acts">${acts}</div>
     </article>`;
   }).join('');
-  const pendN = all.filter(m => !mailDone(m)).length;
-  return head('Bandeja', S.mode === 'demo' ? 'Así se verán los correos de tu Gmail. La app reconoce solicitudes, números de reclamo y avisos de pago, y los liga al cliente y al trámite.' : 'Correos recientes de Gmail. Revisa la sugerencia y conviértelos en trámites o pagos con un clic.',
+  const pendN = todos.filter(enPend).length, convN = todos.filter(enConv).length;
+  const autoN = todos.filter(x => x.done?.estado === 'auto' && String(x.done.creado || '').slice(0, 10) === todayISO()).length;
+  return head('Bandeja', 'Los avisos de las aseguradoras mueven los trámites solos, y los correos nuevos de remitentes automáticos se vuelven trámites. Lo que no queda claro se queda aquí para revisar.',
     `<button class="btn" type="button" data-act="inbox-refresh" ${S.inboxLoading ? 'disabled' : ''}>${ic('arrows-clockwise')}${S.inboxLoading ? 'Leyendo…' : 'Actualizar'}</button>`) + `
+  ${autoN ? `<div class="banner auto-banner">${ic('sparkle')}<span>Hoy SIMEVI procesó <b>${autoN}</b> ${autoN === 1 ? 'correo' : 'correos'} solo. Están en <b>Procesados</b>, con su trámite.</span></div>` : ''}
   <div class="toolbar"><div class="seg" role="group" aria-label="Correos">
     <button type="button" data-act="filter" data-k="bandeja" data-v="pend" aria-pressed="${f.bandeja === 'pend'}">Por revisar${pendN ? ` · ${pendN}` : ''}</button>
+    <button type="button" data-act="filter" data-k="bandeja" data-v="conv" aria-pressed="${f.bandeja === 'conv'}" title="Respuestas a correos anteriores. No crean trámites nuevos.">Conversaciones${convN ? ` · ${convN}` : ''}</button>
     <button type="button" data-act="filter" data-k="bandeja" data-v="hechos" aria-pressed="${f.bandeja === 'hechos'}">Procesados</button></div>
     <div class="seg" role="group" aria-label="Remitentes">
     <button type="button" data-act="bandeja-todos" data-v="" aria-pressed="${!f.bandejaTodos}">${ic('funnel')}Remitentes clave</button>
     <button type="button" data-act="bandeja-todos" data-v="1" aria-pressed="${!!f.bandejaTodos}">Todos</button></div>
-    ${!f.bandejaTodos ? `<span class="muted" style="font-size:.8rem">${esc(remitentes().join(', '))}${conClientes() ? ` y ${DB.clientes.filter(c => c.correo).length} clientes` : ''} · <a href="#/ajustes">Editar</a></span>` : ''}</div>
+    ${!f.bandejaTodos ? `<span class="muted" style="font-size:.8rem">${asegDominios().length} aseguradoras, ${remitentes().length + autoRemitentes().length} remitentes${conClientes() ? ` y ${DB.clientes.filter(c => c.correo).length} clientes` : ''} · <a href="#/ajustes">Editar</a></span>` : ''}</div>
   ${S.inboxCode === 'sin_gmail' ? `<div class="banner">${ic('envelope-simple')}<span>Para ver correos aquí, conecta tu Gmail de trabajo. Silvia conecta el suyo desde su sesión.</span><a class="btn primary sm" href="api/google/connect?para=gmail">${ic('google-logo')}Conectar mi Gmail</a></div>`
   : S.inboxErr ? `<div class="banner" style="background:var(--bad-soft);box-shadow:inset 0 0 0 1px var(--bad)">${ic('warning')}<span>No se pudo leer Gmail: ${esc(S.inboxErr)}</span><a class="btn sm" href="api/diagnose" target="_blank">Diagnóstico</a></div>` : ''}
-  ${S.inboxCode === 'sin_gmail' ? '' : `<div class="panel">${S.inboxLoading && !S.inbox ? `<div class="panel-b">${'<div class="skel" style="margin:14px 0;width:70%"></div><div class="skel" style="margin:14px 0 26px;width:90%"></div>'.repeat(3)}</div>` : rows || `<div class="panel-b">${emptyState('tray', f.bandeja === 'pend' ? 'Bandeja al día' : 'Nada procesado todavía', f.bandeja === 'pend' ? 'No hay correos nuevos por revisar.' : 'Los correos que conviertas aparecerán aquí.')}</div>`}</div>`}`;
+  ${S.inboxCode === 'sin_gmail' ? '' : `<div class="panel">${S.inboxLoading && !S.inbox ? `<div class="panel-b">${'<div class="skel" style="margin:14px 0;width:70%"></div><div class="skel" style="margin:14px 0 26px;width:90%"></div>'.repeat(3)}</div>` : rows || `<div class="panel-b">${f.bandeja === 'pend' ? emptyState('tray', 'Bandeja al día', 'No hay correos por revisar.') : f.bandeja === 'conv' ? emptyState('envelope-simple', 'Sin conversaciones pendientes', 'Las respuestas a correos anteriores aparecen aquí. Si son de un trámite, se anotan solas.') : emptyState('tray', 'Nada procesado todavía', 'Los correos que conviertas aparecerán aquí.')}</div>`}</div>`}`;
 };
 
-async function markMail(id, nota, tramiteId) {
-  if (mailDone({ id })) return;
-  await save('correos', { id, estado: 'procesado', nota, tramiteId: tramiteId || '' }, nota, 'procesó').catch(() => { });
+async function markMail(id, nota, tramiteId, estado = 'procesado') {
+  const m = (S.inbox || []).find(x => x.id === id) || { id };
+  if (mailDone(m)) return;
+  await save('correos', { id: mailKey(m), estado, nota, tramiteId: tramiteId || '', hilo: m.raiz || '', mid: m.mid || '' }, nota, 'procesó').catch(() => { });
 }
 
 async function importAttachments(m, carpeta) {
@@ -1919,15 +2017,33 @@ async function importAttachments(m, carpeta) {
   return d.docs || [];
 }
 
-async function mailAction(act, id) {
+async function mailAction(act, id, el) {
   const m = (S.inbox || []).find(x => x.id === id); if (!m) return;
   const k = classify(m);
-  if (act === 'mail-skip') { await markMail(id, 'Archivado'); render(false); toast('Correo archivado', '', { label: 'Deshacer', run: async () => { await remove('correos', id, 'Correo devuelto a la bandeja'); render(false); } }); return; }
+  if (act === 'mail-skip') { await markMail(id, 'Archivado'); render(false); toast('Correo archivado', '', { label: 'Deshacer', run: async () => { const c = mailRow(m); if (c) await remove('correos', c.id, 'Correo devuelto a la bandeja'); render(false); } }); return; }
+  if (act === 'mail-volver') { const c = mailRow(m); if (c) { await remove('correos', c.id, 'Correo devuelto a la bandeja'); render(false); toast('De vuelta en Por revisar'); } return; }
+  if (act === 'mail-estado' || act === 'mail-novedad') {
+    const aplicar = async tid => {
+      const t = tramite(tid); if (!t) return;
+      if (act === 'mail-novedad') await agregarNovedad(m, t);
+      else if (k.kind === 'pago') { // el pago necesita monto: se abre para revisar
+        openPago(null, { forma: k.forma || 'Cheque', numero: k.numero || '', monto: k.monto || '', aseguradora: k.aseguradora || t.aseguradora || '', clienteId: t.clienteId, tramiteId: t.id, fechaAviso: (m.fecha || nowISO()).slice(0, 10), notas: m.subject || '' });
+        cur.afterSave = async p => { await markMail(id, `Pago ${fmtMoney(p.monto)} · ${t.codigo}`, t.id); };
+        return;
+      } else await aplicarEstado(m, k, t);
+      render(false); toast(`${t.codigo} actualizado`, '', { label: 'Abrir', run: () => openTramite(t.id) });
+    };
+    if (k.tramiteId && !el?.dataset.pick) return aplicar(k.tramiteId);
+    const base = k.dudas?.length ? k.dudas : DB.tramites.filter(t => tramiteAbierto(t) && (!k.clienteId || t.clienteId === k.clienteId) && (!k.aseguradora || !t.aseguradora || t.aseguradora === k.aseguradora));
+    const cands = base.slice(0, 10);
+    if (!cands.length) return toast('No hay trámites abiertos que coincidan. Crea uno primero.', 'err');
+    return popMenu(el, cands.map(t => [t.id, `${t.codigo} · ${shortName(t.paciente || t.asegurado || clienteNombre(t.clienteId))}${t.numeroReclamo ? ' · ' + t.numeroReclamo : ''}`, 'folder-open']), aplicar);
+  }
   if (act === 'mail-tramite') {
     let docs = [];
     try { docs = await importAttachments(m, clienteNombre(k.clienteId)); } catch (e) { toast('No se copiaron los adjuntos: ' + e.message, 'err'); }
     const tipo = /renova/i.test(m.subject + m.snippet) ? 'Renovación' : /exclu/i.test(m.subject + m.snippet) ? 'Exclusión' : /inclu/i.test(m.subject + m.snippet) ? 'Inclusión' : /modific|cambio/i.test(m.subject + m.snippet) ? 'Modificación' : 'Reclamo';
-    openTramite(null, { clienteId: k.clienteId || '', polizaId: k.polizaId || '', aseguradora: k.aseguradora || poliza(k.polizaId)?.aseguradora || '', tipo, asunto: m.subject || '', descripcion: m.snippet || '', docs, fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), gmailId: m.id, monto: k.kind === 'solicitud' ? '' : '' });
+    openTramite(null, { clienteId: k.clienteId || '', polizaId: k.polizaId || '', aseguradora: k.aseguradora || poliza(k.polizaId)?.aseguradora || '', tipo, asunto: m.subject || '', descripcion: m.snippet || '', docs, hilo: m.raiz || '', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), gmailId: m.id, monto: k.kind === 'solicitud' ? '' : '' });
     cur.afterSave = async t => { await markMail(id, `Trámite ${t.codigo}`, t.id); };
     return;
   }
@@ -2008,9 +2124,12 @@ VIEWS.ajustes = () => {
       ${S.mode === 'demo' ? `<div class="seg" role="group" aria-label="Persona">${S.users.map(u => `<button type="button" data-act="set-user" data-v="${esc(u.email)}" aria-pressed="${u.email === S.me.email}">${esc(u.nombre)}</button>`).join('')}</div>` : `<button class="btn" type="button" data-act="logout">${ic('sign-out')}Cerrar sesión</button>`}
     </div></div>
     <div class="panel"><div class="panel-h"><h2>BANDEJA</h2></div><div class="panel-b">
-      ${fld('Remitentes clave', `<textarea id="remitentes" rows="3" placeholder="sisa.com.sv, injiboa.com.sv">${esc(remitentes().join(', '))}</textarea>`, '', 'Dominios o correos separados por coma. Un dominio incluye a todas sus personas: <code>sisa.com.sv</code> trae a notificaciones@, reclamos@, etc. Es la misma lista para Silvia y para ti.')}
+      ${fld('Aseguradoras', `<textarea id="aseg-dom" rows="5" placeholder="sisa.com.sv = SISA">${esc(asegDominios().map(x => `${x.dom} = ${x.nombre}`).join('\n'))}</textarea>`, '', 'Una por línea: <code>dominio = nombre</code>. Sus avisos (aviso de reclamo, en análisis, solicitud de información, cheque disponible, transferencia) mueven el trámite solos.')}
+      <div style="margin-top:12px">${fld('Crean trámites solos', `<textarea id="auto-remit" rows="2" placeholder="mbonilla@injiboa.com.sv">${esc(autoRemitentes().join(', '))}</textarea>`, '', 'Personas que solo mandan reclamos o modificaciones. Cada correo <b>nuevo</b> suyo se vuelve trámite; las respuestas a correos anteriores no. Si no queda claro, queda en la Bandeja como <b>Para revisar</b>.')}</div>
+      <div style="margin-top:12px">${fld('Otros remitentes clave', `<textarea id="remitentes" rows="2" placeholder="injiboa.com.sv, hibronsa.com.sv">${esc(remitentes().join(', '))}</textarea>`, '', 'Clientes o empresas cuyos correos quieres ver en la Bandeja. Un dominio incluye a todas sus personas.')}</div>
       <label class="check" style="margin-top:10px"><input type="checkbox" id="remit-cli" ${conClientes() ? 'checked' : ''}>Incluir también los correos de los clientes registrados</label>
-      <button class="btn sm primary" type="button" data-act="remitentes-save" style="margin-top:12px">Guardar remitentes</button>
+      <label class="check" style="margin-top:6px"><input type="checkbox" id="auto-on" ${ajuste('auto-activo', 'si') !== 'no' ? 'checked' : ''}>Procesar correos automáticamente${ajuste('auto-desde', '') ? ` <span class="faint">(desde el ${fmtDate(ajuste('auto-desde', ''))})</span>` : ''}</label>
+      <button class="btn sm primary" type="button" data-act="remitentes-save" style="margin-top:12px">Guardar</button>
       <div class="sec">${fld('Búsqueda cuando eliges “Todos”', `<input type="text" id="gmailq" value="${esc(S.f.gmailQ || DEFAULT_GMAIL_Q)}">`, '', 'Avanzado: la misma búsqueda que en Gmail.')}
       <button class="btn sm" type="button" data-act="gmailq-save" style="margin-top:10px">Guardar búsqueda</button></div>
     </div></div>
@@ -2111,7 +2230,7 @@ function extraer(m) {
         if (cheques[0]) last.cheque = cheques[0];
         if (monto && !last.monto) last.monto = toNum(monto);
       } else if (l !== m.subject || !items.length) {
-        nums.forEach(n => items.push({ numero: n, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
+        nums.filter(n => !items.some(i => i.numero === n)).forEach(n => items.push({ numero: n, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
         cheques.filter(c => !items.some(i => i.cheque === c)).forEach(c => items.push({ cheque: c, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
       }
     }
@@ -2311,12 +2430,13 @@ async function guardarVarios(btn) {
         if (r.paciente && !t.paciente) { t.paciente = r.paciente; t.parentesco = r.parentesco; }
         let accion;
         if (r.numero && ['recibido', 'ingresado'].includes(t.etapa)) { t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO(); accion = 'movió'; }
-        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `${m ? `Del correo "${m.subject}"` : 'Del PDF'}: ${cambios.join(', ') || 'revisado'}.` }];
+        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', ...(accion ? { a: 'numero' } : {}), texto: `${m ? `Del correo "${m.subject}"` : 'Del PDF'}: ${cambios.join(', ') || 'revisado'}.` }];
         await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'}`, accion);
         hechos.push(t);
       } else {
         const etapa = r.numero ? 'numero' : (MX.kind === 'solicitud' ? 'recibido' : 'ingresado');
         const nt = nuevoReclamo(r, { etapa, fecha: r.fecha || fecha, gmailId: m?.id || '', docs: docsDe(r), aseguradora: MX.aseguradora, origen: m ? `Recibido en el correo "${m.subject}".` : 'Leído del PDF.' });
+        if (m?.raiz) nt.hilo = m.raiz;
         await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))}${nt.asegurado !== clienteNombre(nt.clienteId) ? ' › ' + nt.asegurado : ''}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
         hechos.push(nt);
       }
@@ -2328,6 +2448,510 @@ async function guardarVarios(btn) {
     toast(pagos ? `${n} ${n === 1 ? 'pago registrado' : 'pagos registrados'}` : `${n} ${n === 1 ? 'reclamo guardado' : 'reclamos guardados'}`);
   } catch (e) { btn.disabled = false; toast('No se terminó: ' + e.message, 'err'); render(false); }
 }
+
+/* ---------- Lectura automática de correos ----------
+   1. Correos de aseguradoras (Aviso de reclamo, En análisis, Solicitud de información,
+      Cheque disponible, Pago por transferencia): mueven el trámite que les corresponde.
+   2. Correos NUEVOS de remitentes que solo mandan reclamos o modificaciones (Maricela):
+      se vuelven trámites; si es un reclamo con formularios en PDF, uno por formulario.
+   3. Respuestas dentro de una conversación: se anotan en el trámite de esa conversación.
+      Si la conversación no es de ningún trámite, no se crea nada.
+   Lo que no entiende con seguridad se queda en la Bandeja como "Por revisar".
+   Solo toca correos que llegaron desde que se activó (ajuste "auto-desde"), para no
+   duplicar lo que ya se había registrado a mano. */
+
+// Quita lo citado de una respuesta ("El lun, … escribió:", "De: …", líneas con ">")
+function sinCita(txt) {
+  const t = String(txt || '');
+  const cortes = [/\n\s*(El|On)\s[^\n]{5,200}(escribi[oó]|wrote)\s*:/i, /\n\s*-{2,}\s*(Mensaje original|Original Message|Mensaje reenviado|Forwarded message)/i, /\n\s*(De|From)\s*:\s[^\n]+\n\s*(Enviado|Sent|Fecha|Date)\s*:/i, /\n\s*_{8,}/];
+  let fin = t.length;
+  for (const r of cortes) { const m = t.match(r); if (m && m.index < fin) fin = m.index; }
+  return t.slice(0, fin).split('\n').filter(l => !/^\s*>/.test(l)).join('\n').trim();
+}
+const resumenCuerpo = (m, n = 280) => { const s = sinCita(m.body || m.snippet || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+
+const ESTADOS_CORREO = [
+  { etapa: 'rechazado', n: 'Reclamo rechazado', re: /reclamos?.{0,25}(rechazad|declinad|no\s+procede)|rechazo\s+de(l)?\s+reclamo/, soloAsunto: true },
+  { etapa: 'requerido', n: 'Solicitud de información', re: /solicitud\s+de\s+(informacion|documenta|documentos)|requerimiento\s+de\s+(informacion|documentos)|informacion\s+(adicional|pendiente|faltante)|documentos?\s+(pendientes?|faltantes?|adicionales?)/ },
+  { etapa: 'pago', forma: 'Cheque', n: 'Cheque disponible', re: /cheques?\s+(esta[n]?\s+|se\s+encuentra[n]?\s+)?disponibles?|disponibles?.{0,40}cheques?/ },
+  { etapa: 'pago', forma: 'Transferencia', n: 'Pago por transferencia', re: /notificacion\s+de\s+pago|pago.{0,40}transferencia|transferencia.{0,40}(realizada|aplicada|efectuada|a\s+la\s+cuenta)|abono\s+(a|en)\s+(su\s+)?cuenta|aviso\s+de\s+(deposito|transferencia)/ },
+  { etapa: 'analisis', n: 'Reclamo en análisis', re: /reclamos?\s+en\s+(analisis|revision)|en\s+(proceso\s+de\s+)?analisis/ },
+  { etapa: 'numero', n: 'Aviso de reclamo', re: /aviso\s+de\s+reclamo|registro\s+de(l)?\s+(su\s+)?reclamos?|reclamos?\s+(ha\s+sido\s+|fue\s+)?registrad|confirm\w*\s+(el\s+)?registro/ }
+];
+
+// ¿Qué dice la aseguradora? Primero el asunto; si no, el inicio del cuerpo.
+function estadoDeCorreo(m, aseg) {
+  if (!aseg) return null;
+  const asunto = norm(m.subject), cuerpo = norm(sinCita(m.body || m.snippet || '')).slice(0, 1500);
+  return ESTADOS_CORREO.find(e => e.re.test(asunto)) || ESTADOS_CORREO.find(e => !e.soloAsunto && e.re.test(cuerpo)) || null;
+}
+
+// Todos los códigos que podrían ser números de reclamo
+const codigosEn = txt => [...new Set((String(txt).match(/[A-Z0-9][A-Z0-9-]{4,}/gi) || []).filter(x => /\d/.test(x)).map(x => norm(x).replace(/-+$/, '')))];
+
+// ¿Aparece este nombre en el texto? (al menos 2 palabras y 2/3 del nombre)
+function nombreEn(nombre, set) {
+  const tk = tokens(nombre).filter(w => w.length > 2);
+  if (tk.length < 2) return 0;
+  const hits = tk.filter(w => set.has(w)).length;
+  return hits >= 2 && hits / tk.length >= 0.66 ? hits / tk.length : 0;
+}
+
+// La conversación (Message-ID raíz) de un trámite
+function tramitePorHilo(raiz) {
+  if (!raiz) return null;
+  const t = DB.tramites.find(t => t.hilo === raiz);
+  if (t) return t;
+  const c = DB.correos.find(c => c.hilo === raiz && c.tramiteId && tramite(c.tramiteId));
+  if (c) return tramite(c.tramiteId);
+  const orig = (S.inbox || []).find(m => m.mid === raiz);
+  return orig ? DB.tramites.find(t => t.gmailId && t.gmailId === orig.id) || null : null;
+}
+
+/* El trámite al que se refiere un aviso de la aseguradora.
+   Devuelve { t, por } si hay uno solo claro; { dudas: [...] } si hay varios. */
+function tramiteParaEstado(m, k) {
+  const txt = `${m.subject || ''}\n${sinCita(m.body || m.snippet || '')}`;
+  const cods = codigosEn(txt);
+  const porNum = DB.tramites.filter(t => t.numeroReclamo && cods.includes(norm(t.numeroReclamo)));
+  if (porNum.length === 1) return { t: porNum[0], por: 'número' };
+  const h = tramitePorHilo(m.raiz);
+  if (h) return { t: h, por: 'conversación' };
+  const set = new Set(tokens(txt));
+  const deAseg = t => !k.aseguradora || !t.aseguradora || norm(t.aseguradora) === norm(k.aseguradora) || norm(t.aseguradora).includes(norm(k.aseguradora)) || norm(k.aseguradora).includes(norm(t.aseguradora));
+  const soloReclamos = k.estado?.etapa !== 'requerido';
+  const cands = DB.tramites.filter(t => tramiteAbierto(t) && deAseg(t) && (!soloReclamos || t.tipo === 'Reclamo') && (k.estado?.etapa !== 'numero' || !t.numeroReclamo) && (k.estado?.etapa !== 'pago' || t.etapa !== 'recibido'));
+  const puntos = cands.map(t => {
+    let s = Math.max(nombreEn(t.paciente, set), nombreEn(t.asegurado, set), nombreEn(clienteNombre(t.clienteId), set) * 0.8);
+    if (s && k.monto && +t.monto === +k.monto) s += 0.5;
+    const p = poliza(t.polizaId);
+    if (s && p && cods.includes(norm(p.numero))) s += 0.3;
+    return { t, s };
+  }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+  if (!puntos.length) return null;
+  if (puntos.length === 1 || puntos[0].s - puntos[1].s >= 0.3) return { t: puntos[0].t, por: 'nombre' };
+  return { dudas: puntos.slice(0, 6).map(x => x.t) };
+}
+
+/* Aplica un aviso de la aseguradora a un trámite. auto = lo hizo la app sola. */
+async function aplicarEstado(m, k, t0, auto = false) {
+  const e = k.estado, aseg = k.aseguradora || t0.aseguradora || 'La aseguradora';
+  const pref = auto ? 'Automático · ' : '';
+  if (e.etapa === 'pago') {
+    if (!(+k.monto > 0)) return null; // sin monto, se registra a mano
+    const ya = DB.pagos.find(p => p.tramiteId === t0.id && Math.abs(+p.monto - +k.monto) < 0.01);
+    if (ya) { await markMail(m.id, `${pref}${t0.codigo}: pago ya estaba registrado`, t0.id, auto ? 'auto' : 'procesado'); return t0; }
+    const pg = { id: '', tramiteId: t0.id, clienteId: t0.clienteId, aseguradora: t0.aseguradora || k.aseguradora, forma: e.forma, numero: k.numero || '', banco: '', monto: +k.monto, fechaAviso: (m.fecha || nowISO()).slice(0, 10), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: e.forma === 'Cheque' ? 'disponible' : 'depositado', notas: `${m.subject || ''}${auto ? ' (registrado solo desde el correo)' : ''}` };
+    if (pg.estado === 'depositado') { pg.fechaEntregado = pg.fechaAviso; pg.entregadoA = 'Transferencia de ' + aseg; }
+    await save('pagos', pg, `${pg.forma} ${pg.numero} por ${fmtMoney(pg.monto)} · ${t0.codigo}${auto ? ' (automático)' : ''}`.replace(/\s+/g, ' '));
+    const t = tramite(t0.id), antes = t.etapa;
+    t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'correo', auto, texto: `${aseg}: ${e.n} por ${fmtMoney(pg.monto)}${pg.numero ? ' (n.º ' + pg.numero + ')' : ''}.` }];
+    await linkPagoTramite(pg, true); // mueve el trámite a Pago disponible (o lo cierra si fue transferencia)
+    if (t.etapa === antes) await save('tramites', t, `${t.codigo}: ${e.n}`).catch(() => { });
+    await markMail(m.id, `${pref}${t0.codigo} → ${e.n} ${fmtMoney(pg.monto)}`, t0.id, auto ? 'auto' : 'procesado');
+    return tramite(t0.id);
+  }
+  const t = structuredClone(t0);
+  const cambios = [];
+  if (k.reclamo && !t.numeroReclamo && e.etapa !== 'rechazado' && !DB.tramites.some(x => x.id !== t.id && norm(x.numeroReclamo) === norm(k.reclamo))) { t.numeroReclamo = k.reclamo; cambios.push('número ' + k.reclamo); }
+  const destino = e.etapa === 'numero' ? (t.numeroReclamo ? 'numero' : 'ingresado') : e.etapa;
+  const puede = !tramiteAbierto(t) ? false
+    : destino === 'requerido' ? rangoEtapa(t.etapa) < 5
+    : destino === 'rechazado' ? true
+    : rangoEtapa(destino) > rangoEtapa(t.etapa) || (t.etapa === 'requerido' && destino === 'analisis');
+  const ev = { fecha: nowISO(), por: S.me.email, tipo: 'correo', auto, texto: `${aseg}: ${e.n}${k.reclamo ? ' · ' + k.reclamo : ''} («${m.subject || 'sin asunto'}»).` };
+  if (e.etapa === 'requerido') { const r = resumenCuerpo(m, 260); if (r) ev.texto += ` Piden: ${r}`; }
+  if (puede && destino !== t.etapa) {
+    t.etapa = destino; ev.tipo = 'etapa'; ev.a = destino; ev.correo = true;
+    if (rangoEtapa(destino) >= 1 && !t.fechaIngreso) t.fechaIngreso = (m.fecha || nowISO()).slice(0, 10);
+    cambios.push(destino === 'rechazado' ? 'Rechazado' : ETAPA[destino].n);
+  }
+  t.eventos = [...(t.eventos || []), ev];
+  await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || e.n}${auto ? ` (automático, correo de ${aseg})` : ''}`, puede ? 'movió' : undefined);
+  await markMail(m.id, `${pref}${t.codigo} → ${cambios.join(', ') || e.n}`, t.id, auto ? 'auto' : 'procesado');
+  return t;
+}
+
+/* Respuesta en la conversación de un trámite: se anota (y se guardan sus adjuntos). */
+async function agregarNovedad(m, t0, auto = false) {
+  const t = structuredClone(t0);
+  let docs = [];
+  if ((m.attachments || []).length) docs = await importAttachments(m, clienteNombre(t.clienteId)).catch(() => []);
+  if (docs.length) t.docs = [...(t.docs || []), ...docs];
+  const quien = m.fromName || m.from;
+  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'correo', auto, texto: `${quien} escribió en la conversación: ${resumenCuerpo(m) || m.subject}${docs.length ? ` (${docs.length} adjunto${docs.length > 1 ? 's' : ''} guardado${docs.length > 1 ? 's' : ''})` : ''}` }];
+  await save('tramites', t, `${t.codigo}: correo de ${shortName(quien)}${auto ? ' (automático)' : ''}`);
+  await markMail(m.id, `${auto ? 'Automático · ' : ''}Novedad en ${t.codigo}`, t.id, auto ? 'auto' : 'procesado');
+  return t;
+}
+
+// ¿Reclamo o modificación? null si no queda claro.
+function tipoDeCorreo(m) {
+  const x = norm(`${m.subject || ''}\n${sinCita(m.body || m.snippet || '')}`);
+  const rec = /reclam|reembols|gastos\s+medicos|formulario|factura|siniestro|hospital|consulta|medicament|receta|incapacidad/.test(x);
+  const inc = /inclusi|incluir|\balta(s)?\b|ingreso\s+de\s+(personal|emplead)|nuevos?\s+emplead/.test(x);
+  const exc = /exclusi|excluir|\bbajas?\b|retiro\s+de|renuncia|despido/.test(x);
+  const mod = /modific|cambio\s+de|actualiz|endoso|correcci|beneficiari/.test(x);
+  const otros = [inc, exc, mod].filter(Boolean).length;
+  const t2 = () => inc && !exc ? 'Inclusión' : exc && !inc ? 'Exclusión' : 'Modificación';
+  if (rec && !otros) return 'Reclamo';
+  if (!rec && otros) return t2();
+  const a = norm(m.subject);
+  if (/reclam|reembols/.test(a)) return 'Reclamo';
+  if (/inclu|exclu|modific|cambio|alta|baja/.test(a)) return /inclu|alta/.test(a) ? 'Inclusión' : /exclu|baja/.test(a) ? 'Exclusión' : 'Modificación';
+  return null;
+}
+
+// El cliente de quien manda: por la póliza, por su correo o por su dominio (mbonilla@injiboa… → INJIBOA)
+function clienteDeRemitente(m, k) {
+  if (k.polizaId) return poliza(k.polizaId).clienteId;
+  const from = String(m.from || '').toLowerCase(), dom = from.split('@')[1] || '';
+  let c = DB.clientes.find(c => c.correo && c.correo.toLowerCase().trim() === from) || (dom && DB.clientes.find(c => c.correo && c.correo.toLowerCase().trim().endsWith('@' + dom)));
+  if (!c && dom) { const marca = norm(dom.split('.')[0]); c = DB.clientes.find(c => tokens(c.nombre).includes(marca)) || (marca.length >= 5 ? clientePorNombre(marca, marca) : null); }
+  return c?.id || k.clienteId || '';
+}
+
+const esPdf = a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name || '');
+async function textosPdf(m) {
+  const pdfs = (m.attachments || []).filter(esPdf);
+  if (!pdfs.length) return [];
+  if (S.mode === 'demo') return pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
+  return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || [];
+}
+const responsableDe = m => { const c = (m.cuentas || [m.cuenta]).find(x => S.users.some(u => u.email === x)); return c || S.me.email; };
+
+/* Correo nuevo de un remitente automático → trámite(s) */
+async function crearAuto(m, k) {
+  const tipo = tipoDeCorreo(m);
+  if (!tipo) return null;
+  const clienteId = clienteDeRemitente(m, k);
+  const quien = m.fromName || m.from;
+  const fecha = (m.fecha || nowISO()).slice(0, 10);
+  const forms = tipo === 'Reclamo' ? (await textosPdf(m).catch(() => [])).flatMap(x => leerFormularios(x.texto).map(f => ({ f, ref: x.ref }))) : [];
+  // Sin cliente reconocido solo se sigue si el formulario dice quién es el contratante (se crea al guardar)
+  if (!clienteId && !forms.some(x => x.f.contratante)) return null;
+  const carpeta = clienteId ? clienteNombre(clienteId) : shortName(nombrePropio(forms.find(x => x.f.contratante).f.contratante));
+  const docs = (m.attachments || []).length ? await importAttachments(m, carpeta).catch(() => []) : [];
+  const hechos = [];
+  if (forms.length) {
+    for (const x of forms) {
+      const st = filaDeFormulario(x.f, null);
+      if (st.tramiteId) continue; // ese reclamo ya estaba registrado
+      if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
+      if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombrePropio(st.clienteTxt).replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.');
+      await asegurarEntidades(st, poliza(st.polizaId)?.aseguradora || '');
+      const suyos = docs.filter(d => d.partId === x.ref || d.id === 'demo-' + x.ref);
+      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || '', origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
+      nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
+      await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
+      hechos.push(nt);
+    }
+    if (!hechos.length) { await markMail(m.id, 'Automático · los reclamos del PDF ya estaban registrados', '', 'auto'); return []; }
+  } else {
+    const ps = DB.polizas.filter(p => p.clienteId === clienteId && !p.cancelada);
+    const pid = k.polizaId || (ps.length === 1 ? ps[0].id : '');
+    const t = {
+      id: '', codigo: nextCodigo(), tipo, clienteId, polizaId: pid, aseguradora: poliza(pid)?.aseguradora || k.aseguradora || '', asunto: m.subject || tipo,
+      descripcion: resumenCuerpo(m, 500), canal: CANALES[0], etapa: 'recibido', numeroReclamo: '', monto: tipo === 'Reclamo' && k.monto ? k.monto : '',
+      fechaSolicitud: fecha, fechaIngreso: '', responsable: responsableDe(m), visibleCliente: true, notaCliente: '', docs,
+      eventos: [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'recibido', auto: true, texto: `Recibido por correo de ${quien}. SIMEVI lo creó solo.` }], gmailId: m.id, hilo: m.raiz || ''
+    };
+    await save('tramites', t, `${t.codigo} ${tipo} · ${shortName(clienteNombre(clienteId))} (automático)`);
+    hechos.push(t);
+  }
+  await markMail(m.id, `Automático · ${hechos.map(h => h.codigo).join(', ')}`, hechos[0].id, 'auto');
+  return hechos;
+}
+
+/* Decide qué hacer con un correo. Devuelve lo que hizo o null si lo deja para revisar. */
+async function autoCorreo(m) {
+  const k = classify(m);
+  if (k.estado) {
+    if (!k.tramiteId || (k.estado.etapa === 'pago' && !(+k.monto > 0))) return null;
+    if (extraer(m).rows.length > 1) return null; // varios reclamos en un aviso: mejor revisarlo
+    return aplicarEstado(m, k, tramite(k.tramiteId), true);
+  }
+  if (esRespuesta(m)) { const t = tramitePorHilo(m.raiz); return t ? agregarNovedad(m, t, true) : null; }
+  if (coincide(m.from, autoRemitentes())) return crearAuto(m, k);
+  return null;
+}
+
+async function procesarAuto() {
+  if (S.autoCorriendo || ajuste('auto-activo', 'si') === 'no') return;
+  S.autoCorriendo = true;
+  try {
+    if (S.mode === 'live') await loadLive().catch(() => { }); // ver lo que hizo la otra persona antes de crear nada
+    // Una sola vez: se suma hibronsa.com.sv a los remitentes ya guardados
+    const rem = DB.ajustes.find(a => a.id === 'remitentes');
+    if (rem && !ajuste('migr-remit-1', '') && !/hibronsa/.test(rem.valor)) { await save('ajustes', { ...rem, valor: rem.valor + ', hibronsa.com.sv' }, 'Remitentes: hibronsa.com.sv').catch(() => { }); }
+    if (!ajuste('migr-remit-1', '')) await save('ajustes', { id: 'migr-remit-1', valor: '1' }, 'Ajuste interno').catch(() => { });
+    let desde = ajuste('auto-desde', '');
+    if (!desde) { desde = nowISO(); await save('ajustes', { id: 'auto-desde', valor: desde }, 'Lectura automática de correos activada').catch(() => { }); }
+    const cola = (S.inbox || []).filter(m => !mailDone(m) && String(m.fecha) >= desde).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+    let n = 0;
+    for (const m of cola) {
+      if (mailDone(m)) continue;
+      try { const r = await autoCorreo(m); if (r) n++; } catch (e) { console.warn('auto', m.subject, e); }
+    }
+    if (n) {
+      render(false);
+      toast(`SIMEVI procesó ${n} ${n === 1 ? 'correo' : 'correos'} solo`, '', { label: 'Ver', run: () => { S.f.bandeja = 'hechos'; saveFilters(); go('bandeja'); } });
+    }
+  } finally { S.autoCorriendo = false; }
+}
+
+/* ---------- Reporte de lo ingresado ----------
+   Qué se ingresó (o qué recibió número) en un período, quién lo hizo y a qué hora.
+   Sale como PDF, imagen, tabla para pegar en Gmail o Excel (CSV). */
+
+const fechaLocal = iso => !iso ? '' : String(iso).length <= 10 ? String(iso) : new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const horaLocal = iso => iso && String(iso).length > 10 ? fmtTime(iso) : '';
+
+// El momento en que el trámite pasó a una etapa (por la línea de tiempo)
+function momentoEtapa(t, k) {
+  const ev = t.eventos || [];
+  const pat = { ingresado: /^(ingresad|entregad|enviado|presentad)/i, numero: /n[uú]mero asignado|asign[oó] el n[uú]mero|^n[uú]mero\s/i }[k];
+  const e = ev.find(e => e.a === k) || ev.find(e => !e.a && e.tipo === 'etapa' && pat?.test(e.texto)) || (k === 'ingresado' ? ev.find(e => e.a === 'numero') : null);
+  if (e) return { fecha: e.fecha, por: e.por, auto: !!e.auto };
+  if (k === 'ingresado' && t.fechaIngreso) return { fecha: t.fechaIngreso, por: t.responsable, auto: false };
+  return null;
+}
+
+function rangoReporte(f) {
+  const T = todayISO();
+  const lunes = addDays(T, -((new Date(T + 'T12:00:00').getDay() + 6) % 7));
+  return {
+    hoy: [T, T, 'hoy'], ayer: [addDays(T, -1), addDays(T, -1), 'ayer'], semana: [lunes, T, 'esta semana'],
+    mes: [T.slice(0, 8) + '01', T, 'este mes'], rango: [f.desde || T, f.hasta || f.desde || T, '']
+  }[f.per] || [T, T, 'hoy'];
+}
+
+function datosReporte(f) {
+  const [desde, hasta] = rangoReporte(f);
+  return DB.tramites.map(t => {
+    const ing = momentoEtapa(t, 'ingresado'), num = momentoEtapa(t, 'numero');
+    const m = f.que === 'numero' ? num : ing;
+    return { t, ing, num, m };
+  }).filter(({ t, m }) => {
+    if (!m) return false;
+    const d = fechaLocal(m.fecha);
+    if (d < desde || d > hasta) return false;
+    if (f.tipo === 'reclamos' && t.tipo !== 'Reclamo') return false;
+    if (f.tipo === 'otros' && t.tipo === 'Reclamo') return false;
+    if (f.quien && m.por !== f.quien) return false;
+    return true;
+  }).sort((a, b) => String(a.m.fecha).localeCompare(String(b.m.fecha)))
+    .map(({ t, ing, num }, i) => {
+      const cli = clienteNombre(t.clienteId);
+      const col = t.asegurado && norm(t.asegurado) !== norm(cli);
+      return {
+        n: i + 1, id: t.id, codigo: t.codigo, tipo: t.tipo, cliente: cli, asegurado: col ? t.asegurado : '', paciente: t.paciente || '',
+        aseguradora: t.aseguradora || poliza(t.polizaId)?.aseguradora || '', poliza: poliza(t.polizaId)?.numero || '', numero: t.numeroReclamo || '',
+        monto: +t.monto > 0 ? +t.monto : '', recibido: t.fechaSolicitud || '', canal: t.canal || '',
+        ingreso: ing ? `${fmtShort(fechaLocal(ing.fecha))}${horaLocal(ing.fecha) ? ', ' + horaLocal(ing.fecha) : ''}` : '',
+        porIngreso: ing ? (firstName(userBy(ing.por)) || '') : '',
+        numeroCuando: num ? `${fmtShort(fechaLocal(num.fecha))}${horaLocal(num.fecha) ? ', ' + horaLocal(num.fecha) : ''}` : '',
+        etapa: t.etapa === 'rechazado' ? 'Rechazado' : ETAPA[t.etapa]?.n || ''
+      };
+    });
+}
+
+function tituloReporte(f, filas) {
+  const [desde, hasta, nombre] = rangoReporte(f);
+  const periodo = desde === hasta ? fmtDate(desde) : `${fmtDate(desde)} al ${fmtDate(hasta)}`;
+  const que = f.que === 'numero' ? 'con número asignado' : 'ingresados';
+  const cosa = f.tipo === 'reclamos' ? 'Reclamos' : f.tipo === 'otros' ? 'Trámites (sin reclamos)' : 'Trámites';
+  const porPersona = S.users.map(u => [firstName(u), filas.filter(r => (f.que === 'numero' ? true : r.porIngreso === firstName(u))).length]).filter(([, n]) => n);
+  return {
+    titulo: `${cosa} ${que}`, periodo: `${nombre ? nombre[0].toUpperCase() + nombre.slice(1) + ' · ' : ''}${periodo}`,
+    resumen: `${filas.length} ${filas.length === 1 ? 'trámite' : 'trámites'}${f.que !== 'numero' && porPersona.length > 1 ? ' · ' + porPersona.map(([n, c]) => `${n} ${c}`).join(' · ') : ''}${f.que !== 'numero' ? ` · ${filas.filter(r => r.numero).length} con número` : ''}${f.quien ? ' · solo ' + firstName(userBy(f.quien)) : ''}`,
+    archivo: `SIMEVI ${que} ${desde}${hasta !== desde ? ' a ' + hasta : ''}`
+  };
+}
+
+const COLS_REP = [
+  ['n', '#'], ['codigo', 'Código'], ['quien', 'Cliente / asegurado'], ['tipo', 'Tipo'], ['aseguradora', 'Aseguradora'], ['poliza', 'Póliza'],
+  ['numero', 'N.º de reclamo'], ['monto', 'Monto'], ['ingreso', 'Ingresado'], ['porIngreso', 'Por'], ['numeroCuando', 'Número recibido']
+];
+const celdaRep = (r, k) => k === 'quien' ? [r.cliente, r.asegurado, r.paciente ? 'Paciente: ' + r.paciente : ''].filter(Boolean).join(' › ') : k === 'monto' ? (r.monto ? fmtMoney(r.monto) : '') : String(r[k] ?? '');
+
+/* --- hoja del reporte --- */
+function openReporte(tipo) {
+  S.f.rep = { per: 'hoy', que: 'ingresado', tipo: tipo || 'todos', quien: '', desde: todayISO(), hasta: todayISO(), ...(S.f.rep || {}), ...(tipo ? { tipo } : {}) };
+  const d = openDrawer(reporteHTML());
+  d.classList.add('wide');
+}
+function reporteRedraw() { const d = drawerEl(); if (!d) return; const sc = $('.drawer-b', d).scrollTop; d.innerHTML = reporteHTML(); $('.drawer-b', d).scrollTop = sc; }
+
+function reporteHTML() {
+  const f = S.f.rep, filas = datosReporte(f), h = tituloReporte(f, filas);
+  const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v, n]) => `<button type="button" data-act="rep-set" data-k="${k}" data-v="${v}" aria-pressed="${f[k] === v}">${n}</button>`).join('')}</div>`;
+  return `
+  <div class="drawer-h"><div class="t"><span class="label">Reporte</span><h2>${esc(h.titulo)}</h2><div class="muted" style="font-size:.86rem;margin-top:4px">${esc(h.periodo)} · ${esc(h.resumen)}</div></div>
+    <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="drawer-b">
+    <div class="rep-ctl">
+      ${seg('per', [['hoy', 'Hoy'], ['ayer', 'Ayer'], ['semana', 'Esta semana'], ['mes', 'Este mes'], ['rango', 'Fechas']])}
+      ${f.per === 'rango' ? `<label class="rep-date"><span>Del</span><input type="date" data-rep="desde" value="${esc(f.desde)}"></label><label class="rep-date"><span>al</span><input type="date" data-rep="hasta" value="${esc(f.hasta)}"></label>` : ''}
+    </div>
+    <div class="rep-ctl">
+      ${seg('que', [['ingresado', 'Ingresados'], ['numero', 'Con número asignado']])}
+      ${seg('tipo', [['todos', 'Todo'], ['reclamos', 'Reclamos'], ['otros', 'Otros trámites']])}
+      <select data-rep="quien" aria-label="Persona"><option value="">Los dos</option>${S.users.map(u => `<option value="${esc(u.email)}" ${f.quien === u.email ? 'selected' : ''}>${esc(u.nombre)}</option>`).join('')}</select>
+    </div>
+    ${filas.length ? `<div class="panel rep-prev"><div class="table-wrap"><table class="resp"><thead><tr>${COLS_REP.map(([k, n]) => `<th class="${k === 'monto' ? 'r' : ''}">${n}</th>`).join('')}</tr></thead><tbody>
+      ${filas.map(r => `<tr data-act="open-tramite" data-id="${r.id}">${COLS_REP.map(([k, n]) => `<td data-l="${n}" class="${k === 'monto' ? 'r tnum' : k === 'n' ? 'faint tnum' : ['ingreso', 'numeroCuando', 'numero', 'poliza'].includes(k) ? 'tnum' : ''}">${k === 'codigo' ? `<span class="tk-code">${esc(r.codigo)}</span>` : k === 'porIngreso' && r.porIngreso ? `${av(DB.tramites.find(t => t.id === r.id) && momentoEtapa(tramite(r.id), 'ingresado')?.por, 'sm')} ${esc(r.porIngreso)}` : esc(celdaRep(r, k))}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div></div>`
+    : `<div class="panel panel-b">${emptyState('clipboard-text', 'Nada en este período', f.que === 'numero' ? 'Ningún trámite recibió número en estas fechas.' : 'No se ingresó ningún trámite en estas fechas.')}</div>`}
+    <p class="faint" style="font-size:.8rem;margin:12px 0 0">La hora sale de la línea de tiempo de cada trámite: cuándo se marcó <b>Ingresado</b> y cuándo llegó el número. Si fue automático (por un correo de la aseguradora), cuenta la hora en que la app lo registró.</p>
+  </div>
+  <div class="drawer-f rep-f">
+    <button class="btn" type="button" data-act="rep-csv" ${filas.length ? '' : 'disabled'}>${ic('download-simple')}Excel</button>
+    <button class="btn" type="button" data-act="rep-img" ${filas.length ? '' : 'disabled'}>${ic('file')}Imagen</button>
+    <button class="btn" type="button" data-act="rep-pdf" ${filas.length ? '' : 'disabled'}>${ic('file-pdf')}PDF</button>
+    <span class="spacer"></span>
+    <button class="btn primary" type="button" data-act="rep-gmail" ${filas.length ? '' : 'disabled'}>${ic('envelope-simple')}Enviar por Gmail</button>
+  </div>`;
+}
+
+/* --- salidas --- */
+function tablaHTMLRep(f, filas) {
+  const h = tituloReporte(f, filas);
+  const th = 'padding:7px 9px;border-bottom:2px solid #C9A063;text-align:left;font:600 11px Arial,sans-serif;color:#0B1A2B;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap';
+  const td = 'padding:7px 9px;border-bottom:1px solid #E4DED2;font:13px Arial,sans-serif;color:#1C2633;vertical-align:top';
+  return `<div style="font-family:Arial,sans-serif;color:#1C2633">
+  <div style="font:700 18px Arial,sans-serif;color:#0B1A2B;margin:0 0 2px">${esc(h.titulo)}</div>
+  <div style="font:13px Arial,sans-serif;color:#5A6472;margin:0 0 12px">${esc(h.periodo)} · ${esc(h.resumen)}</div>
+  <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%"><thead><tr>${COLS_REP.map(([k, n]) => `<th style="${th}${k === 'monto' ? ';text-align:right' : ''}">${n}</th>`).join('')}</tr></thead>
+  <tbody>${filas.map((r, i) => `<tr style="background:${i % 2 ? '#FAF7F1' : '#FFFFFF'}">${COLS_REP.map(([k]) => `<td style="${td}${k === 'monto' ? ';text-align:right;white-space:nowrap' : k === 'codigo' || k === 'ingreso' || k === 'numeroCuando' ? ';white-space:nowrap' : ''}${k === 'codigo' ? ';font-weight:700;color:#9C7440' : ''}">${esc(celdaRep(r, k))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+  <div style="font:11px Arial,sans-serif;color:#8A93A0;margin-top:10px">SIMEVI Corredores de Seguros · generado por ${esc(S.me.nombre)} el ${esc(fmtDate(todayISO()))}, ${esc(fmtTime(nowISO()))}</div></div>`;
+}
+
+function textoPlanoRep(f, filas) {
+  const h = tituloReporte(f, filas);
+  return [`${h.titulo} · ${h.periodo}`, h.resumen, '', ...filas.map(r => `${r.n}. ${r.codigo} · ${celdaRep(r, 'quien')} · ${r.tipo} · ${r.aseguradora}${r.numero ? ' · N.º ' + r.numero : ''}${r.monto ? ' · ' + fmtMoney(r.monto) : ''} · ingresado ${r.ingreso}${r.porIngreso ? ' por ' + r.porIngreso : ''}`)].join('\n');
+}
+
+function descargar(blob, nombre) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+function repCSV() {
+  const f = S.f.rep, filas = datosReporte(f), h = tituloReporte(f, filas);
+  const cols = [['codigo', 'Código'], ['tipo', 'Tipo'], ['cliente', 'Cliente'], ['asegurado', 'Asegurado'], ['paciente', 'Paciente'], ['aseguradora', 'Aseguradora'], ['poliza', 'Póliza'], ['numero', 'N.º de reclamo'], ['monto', 'Monto'], ['recibido', 'Recibido'], ['ingreso', 'Ingresado'], ['porIngreso', 'Ingresó'], ['canal', 'Cómo'], ['numeroCuando', 'Número recibido'], ['etapa', 'Etapa actual']];
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = [cols.map(c => q(c[1])).join(','), ...filas.map(r => cols.map(([k]) => q(r[k])).join(','))].join('\r\n');
+  descargar(new Blob(['﻿' + csv], { type: 'text/csv' }), h.archivo + '.csv');
+}
+
+function repPDF() {
+  const f = S.f.rep, filas = datosReporte(f), h = tituloReporte(f, filas);
+  const fr = document.createElement('iframe');
+  fr.setAttribute('aria-hidden', 'true');
+  fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(fr);
+  const doc = fr.contentDocument;
+  doc.open();
+  doc.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(h.archivo)}</title><style>@page{size:letter landscape;margin:12mm}body{margin:0}tr{page-break-inside:avoid}</style></head><body>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #E4DED2"><div style="font:700 15px Arial;letter-spacing:.3em;color:#0B1A2B">SIMEVI<div style="font:500 9px Arial;letter-spacing:.2em;color:#9C7440">CORREDORES DE SEGUROS</div></div><div style="font:12px Arial;color:#5A6472">${esc(fmtDate(todayISO()))}</div></div>
+    ${tablaHTMLRep(f, filas)}</body></html>`);
+  doc.close();
+  setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Este navegador no deja imprimir aquí. Usa “Imagen” o “Excel”.', 'err'); } setTimeout(() => fr.remove(), 60e3); }, 250);
+  toast('Elige “Guardar como PDF” en la ventana de impresión');
+}
+
+// Dibuja la tabla en un canvas (sin librerías) y la devuelve como PNG
+async function repPNG() {
+  const f = S.f.rep, filas = datosReporte(f), h = tituloReporte(f, filas);
+  try { await document.fonts?.ready; } catch (e) { }
+  const W = 1500, pad = 36, rowH = 40, headH = 132, thH = 36;
+  const widths = { n: 34, codigo: 118, quien: 300, tipo: 104, aseguradora: 140, poliza: 128, numero: 156, monto: 92, ingreso: 128, porIngreso: 78, numeroCuando: 126 };
+  const H = headH + thH + filas.length * rowH + 64;
+  const sc = 2, cv = document.createElement('canvas');
+  cv.width = W * sc; cv.height = H * sc;
+  const g = cv.getContext('2d'); g.scale(sc, sc);
+  const F = (w, s) => `${w} ${s}px Archivo, Arial, sans-serif`;
+  g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#0B1A2B'; g.fillRect(0, 0, W, 8);
+  g.fillStyle = '#C9A063'; g.fillRect(0, 8, W, 3);
+  g.fillStyle = '#0B1A2B'; g.font = F(700, 15); g.fillText('S I M E V I', pad, 44);
+  g.fillStyle = '#9C7440'; g.font = F(600, 9); g.fillText('CORREDORES DE SEGUROS', pad, 58);
+  g.fillStyle = '#0B1A2B'; g.font = F(700, 24); g.fillText(h.titulo, pad, 96);
+  g.fillStyle = '#5A6472'; g.font = F(400, 14); g.fillText(`${h.periodo} · ${h.resumen}`, pad, 118);
+  const cut = (s, w) => { s = String(s); if (g.measureText(s).width <= w) return s; while (s && g.measureText(s + '…').width > w) s = s.slice(0, -1); return s + '…'; };
+  let x, y = headH;
+  g.strokeStyle = '#C9A063'; g.lineWidth = 2; g.beginPath(); g.moveTo(pad, y + thH); g.lineTo(W - pad, y + thH); g.stroke();
+  g.font = F(600, 11); g.fillStyle = '#0B1A2B'; x = pad;
+  for (const [k, n] of COLS_REP) { const w = widths[k]; const s = n.toUpperCase(); g.textAlign = k === 'monto' ? 'right' : 'left'; g.fillText(cut(s, w - 12), k === 'monto' ? x + w - 8 : x + 6, y + 23); x += w; }
+  y += thH;
+  filas.forEach((r, i) => {
+    if (i % 2) { g.fillStyle = '#FAF7F1'; g.fillRect(pad, y, W - pad * 2, rowH); }
+    g.strokeStyle = '#E4DED2'; g.lineWidth = 1; g.beginPath(); g.moveTo(pad, y + rowH); g.lineTo(W - pad, y + rowH); g.stroke();
+    x = pad;
+    for (const [k] of COLS_REP) {
+      const w = widths[k];
+      g.font = F(k === 'codigo' ? 700 : 400, 13); g.fillStyle = k === 'codigo' ? '#9C7440' : k === 'n' ? '#8A93A0' : '#1C2633';
+      g.textAlign = k === 'monto' ? 'right' : 'left';
+      g.fillText(cut(celdaRep(r, k), w - 12), k === 'monto' ? x + w - 8 : x + 6, y + 25);
+      x += w;
+    }
+    y += rowH;
+  });
+  g.textAlign = 'left'; g.font = F(400, 11); g.fillStyle = '#8A93A0';
+  g.fillText(`Generado por ${S.me.nombre} el ${fmtDate(todayISO())}, ${fmtTime(nowISO())}`, pad, y + 34);
+  const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+  return { blob, nombre: h.archivo + '.png' };
+}
+
+async function repImagen() {
+  const { blob, nombre } = await repPNG();
+  const file = new File([blob], nombre, { type: 'image/png' });
+  // En el teléfono se comparte directo (WhatsApp, Gmail…); en la computadora se descarga
+  if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer:coarse)').matches) {
+    try { await navigator.share({ files: [file], title: nombre }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  descargar(blob, nombre);
+  toast('Imagen descargada');
+}
+
+async function repGmail() {
+  const f = S.f.rep, filas = datosReporte(f), h = tituloReporte(f, filas);
+  const html = tablaHTMLRep(f, filas), plano = textoPlanoRep(f, filas);
+  let copiado = false;
+  try {
+    if (window.ClipboardItem && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([plano], { type: 'text/plain' }) })]);
+      copiado = true;
+    }
+  } catch (e) { }
+  const asunto = `${h.titulo} · ${h.periodo}`;
+  const cuerpo = copiado ? `Buen día,\n\nLe comparto lo ${f.que === 'numero' ? 'que recibió número' : 'ingresado'} (${h.periodo.toLowerCase()}):\n\n` : plano;
+  const url = `https://mail.google.com/mail/?view=cm&fs=1&authuser=${encodeURIComponent(S.me.email)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo.slice(0, 1800))}`;
+  window.open(url, '_blank', 'noopener');
+  if (copiado) toast('Tabla copiada: en el correo pulsa Ctrl+V (o mantén presionado y Pegar)', '', { label: 'Imagen', run: repImagen });
+  else toast('Se abrió Gmail con el reporte en texto. Para la tabla con formato, usa “Imagen” o “PDF”.');
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act^="rep-"]'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'rep-open') return openReporte(b.dataset.v);
+  if (!S.f.rep) return;
+  if (act === 'rep-set') { S.f.rep[b.dataset.k] = b.dataset.v; saveFilters(); reporteRedraw(); }
+  if (act === 'rep-csv') repCSV();
+  if (act === 'rep-pdf') repPDF();
+  if (act === 'rep-img') repImagen();
+  if (act === 'rep-gmail') repGmail();
+});
+document.addEventListener('change', e => {
+  const k = e.target.dataset?.rep; if (!k || !S.f.rep) return;
+  S.f.rep[k] = e.target.value;
+  if (k === 'desde' && S.f.rep.hasta < S.f.rep.desde) S.f.rep.hasta = S.f.rep.desde;
+  saveFilters(); reporteRedraw();
+});
 
 /* ---------- eventos (delegados) ---------- */
 document.addEventListener('click', async e => {
@@ -2427,7 +3051,7 @@ document.addEventListener('click', async e => {
       toast('Quitado. Pulsa Guardar para confirmar.');
       break;
     }
-    case 'mail-tramite': case 'mail-numero': case 'mail-pago': case 'mail-skip': mailAction(act, id); break;
+    case 'mail-tramite': case 'mail-numero': case 'mail-pago': case 'mail-skip': case 'mail-volver': case 'mail-estado': case 'mail-novedad': mailAction(act, id, el); break;
     case 'inbox-refresh': S.inbox = S.mode === 'demo' ? S.inbox : null; loadInbox(true); if (S.mode === 'demo') toast('Bandeja al día'); break;
     case 'switch-user': {
       if (S.mode === 'demo') { S.me = S.users.find(u => u.email !== S.me.email); persistDemo(); render(false); toast(`Ahora estás como ${S.me.nombre}`); }
@@ -2444,15 +3068,22 @@ document.addEventListener('click', async e => {
     case 'logout': await fetch('api/logout', { method: 'POST' }); location.reload(); break;
     case 'bandeja-todos': S.f.bandejaTodos = !!el.dataset.v; saveFilters(); if (S.mode === 'live') { S.inbox = null; loadInbox(true); } else render(false); break;
     case 'remitentes-save': {
-      const valor = $('#remitentes').value.split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean).join(', ');
-      if (!valor) { toast('Escribe al menos un dominio o correo', 'err'); break; }
+      const valor = listaCorreos($('#remitentes').value).join(', ');
+      const autoV = listaCorreos($('#auto-remit').value).join(', ');
+      const aseg = $('#aseg-dom').value.split(/\n|;/).map(l => l.split(/=|:/)).map(([d, n]) => [listaCorreos(d)[0], (n || '').trim()]).filter(([d]) => d)
+        .map(([d, n]) => `${d} = ${n || d.split('.')[0].toUpperCase()}`).join('\n');
       const cli = $('#remit-cli').checked ? 'si' : 'no';
+      const act = $('#auto-on').checked ? 'si' : 'no';
+      const guarda = async (id, v, resumen) => { if (String(ajuste(id, '\u0000')) !== v) await save('ajustes', { ...(DB.ajustes.find(a => a.id === id) || {}), id, valor: v }, resumen); };
       try {
-        await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes') || {}), id: 'remitentes', valor }, `Remitentes de la Bandeja: ${valor}`);
-        if (cli !== ajuste('remitentes-clientes', 'si')) await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes-clientes') || {}), id: 'remitentes-clientes', valor: cli }, cli === 'si' ? 'La Bandeja incluye correos de clientes' : 'La Bandeja ya no incluye correos de clientes');
+        await guarda('remitentes', valor, `Remitentes de la Bandeja: ${valor || '(ninguno)'}`);
+        await guarda('aseg-dominios', aseg, `Dominios de aseguradoras: ${aseg.replace(/\n/g, ', ')}`);
+        await guarda('auto-remitentes', autoV, `Remitentes que crean trámites solos: ${autoV || '(ninguno)'}`);
+        await guarda('remitentes-clientes', cli, cli === 'si' ? 'La Bandeja incluye correos de clientes' : 'La Bandeja ya no incluye correos de clientes');
+        await guarda('auto-activo', act, act === 'si' ? 'Lectura automática de correos encendida' : 'Lectura automática de correos apagada');
       } catch (err) { break; }
       if (S.mode === 'live') S.inbox = null;
-      render(false); toast('Remitentes guardados');
+      render(false); toast('Ajustes de la Bandeja guardados');
       break;
     }
     case 'gmailq-save': S.f.gmailQ = $('#gmailq').value.trim(); saveFilters(); S.inbox = null; toast('Búsqueda de Gmail guardada'); break;
@@ -2461,7 +3092,7 @@ document.addEventListener('click', async e => {
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ exportado: nowISO(), por: S.me.email, ...DB }, null, 2)], { type: 'application/json' }));
       a.download = `SIMEVI copia ${todayISO()}.json`; a.click(); break;
     }
-    case 'demo-reset': if (await ask('¿Borrar los cambios de la demo y volver a los datos de ejemplo?')) { bootDemoData(true); render(false); toast('Datos de ejemplo restaurados'); } break;
+    case 'demo-reset': if (await ask('¿Borrar los cambios de la demo y volver a los datos de ejemplo?')) { bootDemoData(true); S.inbox = S.demoInbox; render(false); toast('Datos de ejemplo restaurados'); procesarAuto(); } break;
   }
 });
 
@@ -2582,10 +3213,13 @@ async function boot() {
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState !== 'visible' || drawerEl()) return;
       try { await loadLive(); render(false); } catch (e) { }
+      // Cada 10 minutos, al volver, se leen los correos nuevos (y se procesan los automáticos)
+      if (!S.inboxLoading && (!S.inboxAt || Date.now() - S.inboxAt > 10 * 60e3)) loadInbox(true);
     });
   } else {
     S.inbox = S.demoInbox;
     render(false);
+    procesarAuto();
   }
 }
 boot();

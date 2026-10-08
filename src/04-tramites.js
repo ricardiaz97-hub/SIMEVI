@@ -44,15 +44,15 @@ VIEWS.tramites = () => {
   if (!DB.tramites.length) body = emptyState('folder-open', 'Aún no hay trámites', 'Crea el primero o conviértelo desde un correo en la Bandeja.', `<button class="btn primary" type="button" data-act="new-tramite">${ic('plus')}Nuevo trámite</button>`);
   else if (f.tVista === 'lista') body = tramitesTabla(list);
   else {
-    const cols = ETAPAS.filter(e => e.k !== 'cerrado' || f.tCerrados);
-    const colors = { recibido: 'var(--info)', ingresado: 'var(--muted)', numero: 'var(--acc)', analisis: 'var(--acc-hi)', pago: 'var(--ok)', cerrado: 'var(--ok)' };
+    const cols = ETAPAS.filter(e => (e.k !== 'cerrado' || f.tCerrados) && (e.k !== 'requerido' || list.some(t => t.etapa === 'requerido')));
+    const colors = { recibido: 'var(--info)', ingresado: 'var(--muted)', numero: 'var(--acc)', analisis: 'var(--acc-hi)', requerido: 'var(--warn)', pago: 'var(--ok)', cerrado: 'var(--ok)' };
     body = `<div class="board">${cols.map(e => {
       const items = list.filter(t => t.etapa === e.k || (e.k === 'cerrado' && t.etapa === 'rechazado'));
       return `<section class="col" aria-label="${e.n}"><div class="col-h"><span class="dot" style="--c:${colors[e.k]}"></span><h3>${e.n}</h3><span class="n">${items.length}</span></div>
         <div class="col-b">${items.length ? items.map(tkCard).join('') : `<div class="col-empty">${e.k === 'recibido' ? 'Las solicitudes nuevas llegan aquí' : 'Nada en esta etapa'}</div>`}</div></section>`;
     }).join('')}</div>`;
   }
-  return head('Trámites', 'Reclamos, modificaciones y renovaciones, desde que llega el correo hasta que el cliente recibe su pago.', `<button class="btn primary" type="button" data-act="new-tramite">${ic('plus')}Nuevo trámite</button>`) + tools + body;
+  return head('Trámites', 'Reclamos, modificaciones y renovaciones, desde que llega el correo hasta que el cliente recibe su pago.', `<button class="btn" type="button" data-act="rep-open" data-v="todos">${ic('clipboard-text')}Reporte</button><button class="btn primary" type="button" data-act="new-tramite">${ic('plus')}Nuevo trámite</button>`) + tools + body;
 };
 
 function tramitesTabla(list) {
@@ -110,12 +110,13 @@ function openTramite(id, prefill = {}) {
 }
 
 function tramiteHTML(t, isNew) {
-  const etapas = etapasDe(t.tipo);
+  // "Solicitud de información" solo aparece en la barra si la aseguradora la pidió
+  const etapas = etapasDe(t.tipo).filter(e => e.k !== 'requerido' || t.etapa === 'requerido' || (t.eventos || []).some(x => x.a === 'requerido'));
   const idx = etapas.findIndex(e => e.k === t.etapa);
   const rech = t.etapa === 'rechazado';
   const nowIdx = rech ? etapas.length - 1 : idx;
   const pagos = DB.pagos.filter(p => p.tramiteId === t.id);
-  const next = !rech && idx >= 0 && idx < etapas.length - 1 ? etapas[idx + 1] : null;
+  const next = siguienteEtapa(t);
   return `
   <div class="drawer-h"><div class="t"><span class="label">${isNew ? 'Nuevo trámite' : esc(t.tipo)} · <span style="color:var(--acc-hi)">${esc(t.codigo)}</span></span>
     <h2>${isNew ? 'Registrar solicitud' : esc(clienteNombre(t.clienteId))}</h2>${!isNew ? `<div class="muted" style="font-size:.86rem;margin-top:4px">${esc(t.asunto || '')}</div>` : ''}</div>
@@ -159,7 +160,7 @@ function tramiteHTML(t, isNew) {
     ${pagos.length || t.tipo === 'Reclamo' ? `<div class="sec"><div class="label">Pagos</div>${pagos.length ? `<div class="docs">${pagos.map(p => `<button class="doc" type="button" data-act="open-pago" data-id="${p.id}">${ic('money-wavy')}<span>${esc(p.forma)} ${esc(p.numero || '')} · ${fmtMoney(p.monto)}</span><span class="pill ${PAGO_E[p.estado]?.cls}">${esc(PAGO_E[p.estado]?.n)}</span></button>`).join('')}</div>` : ''}
       <button class="btn sm" type="button" data-act="pago-from-tramite" style="margin-top:8px">${ic('plus')}Registrar cheque o depósito</button></div>` : ''}
     <div class="sec"><div class="label">Seguimiento</div>
-      <ol class="tl">${(t.eventos || []).slice().reverse().map(e => `<li class="${e.tipo === 'etapa' ? 'stage' : ''}"><div class="when2">${av(e.por, 'sm')}${esc(firstName(userBy(e.por)))} · ${fmtDate(e.fecha)}, ${fmtTime(e.fecha)}</div><p>${esc(e.texto)}</p></li>`).join('') || '<li><p class="muted">Sin movimientos todavía.</p></li>'}</ol>
+      <ol class="tl">${(t.eventos || []).slice().reverse().map(e => `<li class="${e.tipo === 'etapa' ? 'stage' : e.tipo === 'correo' ? 'mailev' : ''}"><div class="when2">${av(e.por, 'sm')}${esc(firstName(userBy(e.por)))} · ${fmtDate(e.fecha)}, ${fmtTime(e.fecha)}${e.auto ? '<span class="pill" style="margin-left:6px">automático</span>' : ''}</div><p>${e.tipo === 'correo' || e.correo ? ic('envelope-simple') : ''}${esc(e.texto)}</p></li>`).join('') || '<li><p class="muted">Sin movimientos todavía.</p></li>'}</ol>
       <div class="note-add"><label class="sr" for="note">Nota</label><input type="text" id="note" placeholder="Agregar nota: llamada, visita, lo que dijo la aseguradora…"><button class="btn" type="button" data-act="add-note">Anotar</button></div>
     </div>
     ${authors(t)}` : ''}
@@ -204,13 +205,13 @@ async function saveTramite(advanceTo) {
   let resumen = `${t.codigo} ${t.tipo} · ${clienteNombre(t.clienteId)}`;
   let accion;
   t.eventos = t.eventos || [];
-  if (isNew) t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${ETAPA[t.etapa]?.n || 'Recibido'}: ${t.asunto}` });
+  if (isNew) t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: t.etapa, texto: `${ETAPA[t.etapa]?.n || 'Recibido'}: ${t.asunto}` });
   if (advanceTo) {
     if (advanceTo === 'numero' && !t.numeroReclamo) { toast('Escribe primero el número que dio la aseguradora', 'err'); $('#frm [name=numeroReclamo]').focus(); return; }
     if (advanceTo === 'ingresado' && !t.fechaIngreso) t.fechaIngreso = todayISO();
-    const txt = advanceTo === 'numero' ? `Número asignado ${t.numeroReclamo}.` : advanceTo === 'ingresado' ? `Ingresado (${t.canal.toLowerCase()}).` : advanceTo === 'rechazado' ? 'Rechazado por la aseguradora.' : `${ETAPA[advanceTo]?.n}.`;
+    const txt = advanceTo === 'numero' ? `Número asignado ${t.numeroReclamo}.` : advanceTo === 'ingresado' ? `Ingresado (${t.canal.toLowerCase()}).` : advanceTo === 'rechazado' ? 'Rechazado por la aseguradora.' : advanceTo === 'requerido' ? 'La aseguradora pidió más información.' : advanceTo === 'analisis' && t.etapa === 'requerido' ? 'Información enviada a la aseguradora.' : `${ETAPA[advanceTo]?.n}.`;
     t.etapa = advanceTo;
-    t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: txt });
+    t.eventos.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: advanceTo, texto: txt });
     resumen = `${t.codigo} a ${advanceTo === 'rechazado' ? 'Rechazado' : ETAPA[advanceTo].n}${advanceTo === 'numero' ? ` (${t.numeroReclamo})` : ''}`;
     accion = 'movió';
   }
@@ -232,12 +233,13 @@ function newPagoFromTramite(t) {
 function tramiteMoreMenu(btn) {
   const t = cur.row;
   const items = [
+    ...(t.etapa !== 'requerido' && tramiteAbierto(t) ? [['requerido', 'Piden información', 'note-pencil']] : []),
     ['rechazado', 'Marcar como rechazado', 'warning'],
     ['copy-link', 'Copiar enlace del cliente', 'link-simple'],
     ['delete', 'Eliminar trámite', 'trash']
   ];
   popMenu(btn, items, async k => {
-    if (k === 'rechazado') return saveTramite('rechazado');
+    if (k === 'rechazado' || k === 'requerido') return saveTramite(k);
     if (k === 'copy-link') return copyPortal(t.clienteId);
     if (k === 'delete') {
       if (!await ask(`¿Eliminar ${t.codigo}? Queda anotado en la bitácora.`, { danger: true, ok: 'Eliminar' })) return;

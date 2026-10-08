@@ -96,7 +96,7 @@ document.addEventListener('click', async e => {
       toast('Quitado. Pulsa Guardar para confirmar.');
       break;
     }
-    case 'mail-tramite': case 'mail-numero': case 'mail-pago': case 'mail-skip': mailAction(act, id); break;
+    case 'mail-tramite': case 'mail-numero': case 'mail-pago': case 'mail-skip': case 'mail-volver': case 'mail-estado': case 'mail-novedad': mailAction(act, id, el); break;
     case 'inbox-refresh': S.inbox = S.mode === 'demo' ? S.inbox : null; loadInbox(true); if (S.mode === 'demo') toast('Bandeja al día'); break;
     case 'switch-user': {
       if (S.mode === 'demo') { S.me = S.users.find(u => u.email !== S.me.email); persistDemo(); render(false); toast(`Ahora estás como ${S.me.nombre}`); }
@@ -113,15 +113,22 @@ document.addEventListener('click', async e => {
     case 'logout': await fetch('api/logout', { method: 'POST' }); location.reload(); break;
     case 'bandeja-todos': S.f.bandejaTodos = !!el.dataset.v; saveFilters(); if (S.mode === 'live') { S.inbox = null; loadInbox(true); } else render(false); break;
     case 'remitentes-save': {
-      const valor = $('#remitentes').value.split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean).join(', ');
-      if (!valor) { toast('Escribe al menos un dominio o correo', 'err'); break; }
+      const valor = listaCorreos($('#remitentes').value).join(', ');
+      const autoV = listaCorreos($('#auto-remit').value).join(', ');
+      const aseg = $('#aseg-dom').value.split(/\n|;/).map(l => l.split(/=|:/)).map(([d, n]) => [listaCorreos(d)[0], (n || '').trim()]).filter(([d]) => d)
+        .map(([d, n]) => `${d} = ${n || d.split('.')[0].toUpperCase()}`).join('\n');
       const cli = $('#remit-cli').checked ? 'si' : 'no';
+      const act = $('#auto-on').checked ? 'si' : 'no';
+      const guarda = async (id, v, resumen) => { if (String(ajuste(id, '\u0000')) !== v) await save('ajustes', { ...(DB.ajustes.find(a => a.id === id) || {}), id, valor: v }, resumen); };
       try {
-        await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes') || {}), id: 'remitentes', valor }, `Remitentes de la Bandeja: ${valor}`);
-        if (cli !== ajuste('remitentes-clientes', 'si')) await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes-clientes') || {}), id: 'remitentes-clientes', valor: cli }, cli === 'si' ? 'La Bandeja incluye correos de clientes' : 'La Bandeja ya no incluye correos de clientes');
+        await guarda('remitentes', valor, `Remitentes de la Bandeja: ${valor || '(ninguno)'}`);
+        await guarda('aseg-dominios', aseg, `Dominios de aseguradoras: ${aseg.replace(/\n/g, ', ')}`);
+        await guarda('auto-remitentes', autoV, `Remitentes que crean trámites solos: ${autoV || '(ninguno)'}`);
+        await guarda('remitentes-clientes', cli, cli === 'si' ? 'La Bandeja incluye correos de clientes' : 'La Bandeja ya no incluye correos de clientes');
+        await guarda('auto-activo', act, act === 'si' ? 'Lectura automática de correos encendida' : 'Lectura automática de correos apagada');
       } catch (err) { break; }
       if (S.mode === 'live') S.inbox = null;
-      render(false); toast('Remitentes guardados');
+      render(false); toast('Ajustes de la Bandeja guardados');
       break;
     }
     case 'gmailq-save': S.f.gmailQ = $('#gmailq').value.trim(); saveFilters(); S.inbox = null; toast('Búsqueda de Gmail guardada'); break;
@@ -130,7 +137,7 @@ document.addEventListener('click', async e => {
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ exportado: nowISO(), por: S.me.email, ...DB }, null, 2)], { type: 'application/json' }));
       a.download = `SIMEVI copia ${todayISO()}.json`; a.click(); break;
     }
-    case 'demo-reset': if (await ask('¿Borrar los cambios de la demo y volver a los datos de ejemplo?')) { bootDemoData(true); render(false); toast('Datos de ejemplo restaurados'); } break;
+    case 'demo-reset': if (await ask('¿Borrar los cambios de la demo y volver a los datos de ejemplo?')) { bootDemoData(true); S.inbox = S.demoInbox; render(false); toast('Datos de ejemplo restaurados'); procesarAuto(); } break;
   }
 });
 
@@ -251,10 +258,13 @@ async function boot() {
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState !== 'visible' || drawerEl()) return;
       try { await loadLive(); render(false); } catch (e) { }
+      // Cada 10 minutos, al volver, se leen los correos nuevos (y se procesan los automáticos)
+      if (!S.inboxLoading && (!S.inboxAt || Date.now() - S.inboxAt > 10 * 60e3)) loadInbox(true);
     });
   } else {
     S.inbox = S.demoInbox;
     render(false);
+    procesarAuto();
   }
 }
 boot();

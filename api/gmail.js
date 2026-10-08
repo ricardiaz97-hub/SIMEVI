@@ -14,13 +14,21 @@ function bodyText(m) {
     if (p.mimeType === 'text/plain' && p.body?.data) plain += decode(p.body.data);
     if (p.mimeType === 'text/html' && p.body?.data) html += decode(p.body.data);
   });
-  const t = plain || html.replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
-  return t.replace(/\s+/g, ' ').trim().slice(0, 4000);
+  const t = plain || html.replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<(br|\/p|\/div|\/tr|\/li|\/h\d)[^>]*>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+  // Se conservan los saltos de línea: sirven para separar varios reclamos y para quitar lo citado en las respuestas.
+  return t.replace(/\r/g, '').replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 6000);
 }
 function attachments(m) {
   const out = [];
   walk(m.payload, p => { if (p.filename && p.body?.attachmentId) out.push({ id: p.partId, name: p.filename, size: p.body.size, mime: p.mimeType }); });
   return out;
+}
+// Conversaciones: el Message-ID es el mismo en el buzón de Silvia y en el de Ricardo; el threadId no.
+const ids = v => String(v || '').match(/<[^>]+>/g) || [];
+function hilo(m) {
+  const mid = ids(header(m, 'message-id'))[0] || '';
+  const refs = ids(header(m, 'references')), irt = ids(header(m, 'in-reply-to'))[0];
+  return { mid, raiz: refs[0] || irt || mid, respuesta: !!(refs.length || irt) };
 }
 function parseFrom(v) {
   const m = String(v).match(/^\s*"?([^"<]*)"?\s*<([^>]+)>/);
@@ -45,7 +53,7 @@ export default async function handler(req, res) {
           return msgs.filter(Boolean).map(m => ({
             id: m.id, threadId: m.threadId, cuenta: b.cuenta, fecha: new Date(+m.internalDate).toISOString(),
             ...parseFrom(header(m, 'from')), subject: header(m, 'subject'), snippet: m.snippet ? m.snippet.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '',
-            body: bodyText(m), attachments: attachments(m)
+            body: bodyText(m), attachments: attachments(m), ...hilo(m)
           }));
         } catch (e) { errores.push({ cuenta: b.cuenta, message: hint(e) }); return []; }
       }));

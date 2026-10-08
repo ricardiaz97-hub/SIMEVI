@@ -73,6 +73,26 @@ No hace falta cargar todo antes: si el cliente, la póliza o el empleado no exis
 
 **Ingresar en línea:** los reclamos de SISA tienen el botón **Ingresar en línea**, que abre el portal de SISA en otra pestaña. Si el reclamo estaba como *Recibido*, al volver aparece **Ya lo ingresé** para pasarlo a *Ingresado* con un clic. Pan-American Life y las demás no tienen ese botón porque se entregan en físico. Para agregar otra aseguradora con portal, edita `PORTALES` en `src/01-core.js`.
 
+## Correos automáticos
+
+En **Ajustes → Bandeja** hay tres listas:
+
+- **Aseguradoras** (una por línea, `dominio = nombre`, por ejemplo `sisa.com.sv = SISA`). Sus avisos mueven el trámite solo:
+  - *Aviso de reclamo* → pone el número y lo pasa a **Número asignado**.
+  - *Reclamos en análisis* → **En análisis**.
+  - *Solicitud de información* → **Solicitud de información** (anota lo que piden). Cuando lo mandes, pulsa **Información enviada**.
+  - *Cheque disponible* → registra el cheque en Pagos y pasa a **Pago disponible**.
+  - *Notificación de pago por transferencia* → registra la transferencia y cierra el trámite.
+  El trámite se encuentra por el número de reclamo, por la conversación o por el nombre del asegurado/paciente. Si hay duda, el correo se queda en la Bandeja con **Elegir trámite**.
+- **Crean trámites solos** (por ejemplo `mbonilla@injiboa.com.sv`). Cada correo **nuevo** suyo se vuelve trámite: si es un reclamo con formularios en PDF, uno por formulario; si es una inclusión, exclusión o modificación, un trámite de ese tipo. Si no queda claro, queda como **Para revisar**.
+- **Otros remitentes clave**: clientes o empresas (como `hibronsa.com.sv`) cuyos correos quieres ver en la Bandeja.
+
+Las **respuestas** a correos anteriores no crean trámites: si la conversación es de un trámite, se anotan en su línea de tiempo (y se guardan sus adjuntos); si no, quedan en la pestaña **Conversaciones**. Todo lo automático queda en **Procesados** con la etiqueta *Automático* y se puede devolver a revisar. Solo se procesan correos que llegaron después de encender la función, y el mismo correo en el buzón de Silvia y en el de Ricardo cuenta una sola vez.
+
+## Reporte de lo ingresado
+
+En **Reclamos → Reporte de ingresados** (o **Trámites → Reporte**): hoy, ayer, esta semana, este mes o un rango de fechas; ingresados o con número asignado; quién lo ingresó y a qué hora. Sale como **Excel**, **Imagen** (en el teléfono se comparte directo a WhatsApp o Gmail), **PDF** o **Enviar por Gmail** (abre un correo nuevo y copia la tabla para pegarla con Ctrl+V).
+
 ## Uso diario
 
 1. Llega una solicitud al correo → **Bandeja → Crear trámite**. Los PDFs se copian solos a Drive.

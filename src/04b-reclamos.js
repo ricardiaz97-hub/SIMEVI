@@ -151,7 +151,7 @@ function campos(st, pre) {
 /* Crea lo que falte (cliente, póliza, asegurado en la colectiva) antes de guardar el reclamo */
 async function asegurarEntidades(st, aseguradora = '') {
   if (!st.clienteId) {
-    const nombre = limpiar(st.clienteTxt || '');
+    const nombre = limpiar(st.clienteTxt || '').replace(/(c\.\s*v)$/i, '$1.');
     if (!nombre) throw new Error('Falta el cliente');
     const ya = DB.clientes.find(c => norm(c.nombre) === norm(nombre)) || clientePorNombre(nombre);
     if (ya) st.clienteId = ya.id;
@@ -189,8 +189,8 @@ function nuevoReclamo(st, { etapa = 'ingresado', fecha, gmailId = '', docs = [],
   const p = poliza(st.polizaId);
   const e = st.numero ? 'numero' : etapa;
   const quien = st.paciente || st.asegurado || shortName(clienteNombre(st.clienteId));
-  const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: origen || (e === 'recibido' ? 'Recibido.' : `Ingresado a ${p?.aseguradora || aseguradora || 'la aseguradora'}.`) }];
-  if (st.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${st.numero}.` });
+  const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: e, texto: origen || (e === 'recibido' ? 'Recibido.' : `Ingresado a ${p?.aseguradora || aseguradora || 'la aseguradora'}.`) }];
+  if (st.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'numero', texto: `Número asignado ${st.numero}.` });
   return {
     id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: st.clienteId, polizaId: st.polizaId, aseguradora: p?.aseguradora || aseguradora || '',
     asegurado: st.asegurado || clienteNombre(st.clienteId), certificado: st.certificado, paciente: st.paciente, parentesco: st.paciente ? st.parentesco : '',
@@ -214,7 +214,7 @@ VIEWS.reclamos = () => {
   const seg = [['abiertos', 'Abiertos'], ['sinnum', `Sin número${sinNum ? ' · ' + sinNum : ''}`], ['todos', 'Todos']];
   const c = campos(RX, 'rx');
 
-  return head('Reclamos', 'Cliente, póliza, asegurado y, si es un dependiente, el paciente. Las listas buscan mientras escribes; lo que no exista se crea al guardar. Si adjuntas el formulario en PDF, se llena solo.') + `
+  return head('Reclamos', 'Cliente, póliza, asegurado y, si es un dependiente, el paciente. Las listas buscan mientras escribes; lo que no exista se crea al guardar. Si adjuntas el formulario en PDF, se llena solo.', `<button class="btn" type="button" data-act="rep-open" data-v="reclamos">${ic('clipboard-text')}Reporte de ingresados</button>`) + `
   <div class="rx-entry">
     <span class="rx-title">Nuevo reclamo</span>
     <form class="rx-new" id="rx-new" data-row="rx" autocomplete="off">
@@ -383,7 +383,7 @@ document.addEventListener('change', async e => {
     let accion, resumen = `${t.codigo} ${k === 'numeroReclamo' ? 'número ' + (v || '(borrado)') : 'nota: ' + v.slice(0, 60)}`;
     if (k === 'numeroReclamo' && v && ['recibido', 'ingresado'].includes(t.etapa)) {
       t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO();
-      t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${v}.` }];
+      t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'numero', texto: `Número asignado ${v}.` }];
       accion = 'movió'; resumen = `${t.codigo} a Número asignado (${v})`;
     }
     try { await save('tramites', t, resumen, accion); el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 900); toast(accion ? `${t.codigo}: Número asignado` : 'Guardado'); if (accion) render(false); } catch (err) { }
@@ -444,7 +444,7 @@ async function marcarIngresadoPortal(id) {
   const t = structuredClone(t0);
   const pt = portalDe(t.aseguradora || poliza(t.polizaId)?.aseguradora);
   t.etapa = 'ingresado'; t.canal = 'Portal de la aseguradora'; t.fechaIngreso = t.fechaIngreso || todayISO();
-  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Ingresado en línea en el portal de ${pt?.nombre || t.aseguradora || 'la aseguradora'}.` }];
+  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'ingresado', texto: `Ingresado en línea en el portal de ${pt?.nombre || t.aseguradora || 'la aseguradora'}.` }];
   try { await save('tramites', t, `${t.codigo} a Ingresado (en línea)`, 'movió'); } catch (e) { return; }
   PORTAL_ABIERTO.delete(id);
   toast(`${t.codigo}: Ingresado`);

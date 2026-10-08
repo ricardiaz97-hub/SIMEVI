@@ -48,11 +48,21 @@ const ETAPAS = [
   { k: 'ingresado', n: 'Ingresado', d: 'En el portal o entregado en físico', c: 'Presentado a la aseguradora' },
   { k: 'numero', n: 'Número asignado', d: 'La aseguradora dio número', c: 'La aseguradora lo registró' },
   { k: 'analisis', n: 'En análisis', d: 'La aseguradora lo revisa', c: 'En revisión' },
+  { k: 'requerido', n: 'Solicitud de información', d: 'La aseguradora pidió algo más', c: 'La aseguradora pidió más información' },
   { k: 'pago', n: 'Pago disponible', d: 'Cheque o depósito listo', c: 'Tu pago está listo' },
   { k: 'cerrado', n: 'Cerrado', d: 'Terminado', c: 'Terminado' }
 ];
 const ETAPA = Object.fromEntries(ETAPAS.map(e => [e.k, e]));
 const etapasDe = tipo => tipo === 'Reclamo' ? ETAPAS : ETAPAS.filter(e => e.k !== 'pago');
+const rangoEtapa = k => ({ recibido: 0, ingresado: 1, numero: 2, analisis: 3, requerido: 3.5, pago: 5, cerrado: 6, rechazado: 6 }[k] ?? 0);
+// Lo normal después de cada etapa. "Solicitud de información" no es un paso obligado: se marca cuando la aseguradora la pide.
+function siguienteEtapa(t) {
+  if (t.etapa === 'rechazado' || t.etapa === 'cerrado') return null;
+  if (t.etapa === 'requerido') return { k: 'analisis', n: 'Información enviada' };
+  const et = etapasDe(t.tipo).filter(e => e.k !== 'requerido');
+  const i = et.findIndex(e => e.k === t.etapa);
+  return i >= 0 && i < et.length - 1 ? et[i + 1] : null;
+}
 const CANALES = ['Portal de la aseguradora', 'Entrega en físico', 'Correo a la aseguradora'];
 const RAMOS = ['Vida', 'Gastos médicos', 'Accidentes personales', 'Automotor', 'Incendio', 'Daños', 'Responsabilidad civil', 'Fianzas', 'Transporte', 'Otro'];
 // Aseguradoras con portal para ingresar reclamos en línea. Las demás se entregan en físico.
@@ -111,7 +121,7 @@ const polizaEstado = p => {
 const etapaPill = t => {
   if (t.etapa === 'rechazado') return `<span class="pill bad">Rechazado</span>`;
   const e = ETAPA[t.etapa] || ETAPAS[0];
-  const cls = { recibido: 'info', ingresado: '', numero: 'gold', analisis: 'gold', pago: 'ok', cerrado: 'ok' }[e.k];
+  const cls = { recibido: 'info', ingresado: '', numero: 'gold', analisis: 'gold', requerido: 'warn', pago: 'ok', cerrado: 'ok' }[e.k];
   return `<span class="pill ${cls}">${esc(e.n)}</span>`;
 };
 const nextCodigo = () => {
