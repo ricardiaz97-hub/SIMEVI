@@ -115,6 +115,19 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'logout': await fetch('api/logout', { method: 'POST' }); location.reload(); break;
+    case 'bandeja-todos': S.f.bandejaTodos = !!el.dataset.v; saveFilters(); if (S.mode === 'live') { S.inbox = null; loadInbox(true); } else render(false); break;
+    case 'remitentes-save': {
+      const valor = $('#remitentes').value.split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean).join(', ');
+      if (!valor) { toast('Escribe al menos un dominio o correo', 'err'); break; }
+      const cli = $('#remit-cli').checked ? 'si' : 'no';
+      try {
+        await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes') || {}), id: 'remitentes', valor }, `Remitentes de la Bandeja: ${valor}`);
+        if (cli !== ajuste('remitentes-clientes', 'si')) await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes-clientes') || {}), id: 'remitentes-clientes', valor: cli }, cli === 'si' ? 'La Bandeja incluye correos de clientes' : 'La Bandeja ya no incluye correos de clientes');
+      } catch (err) { break; }
+      if (S.mode === 'live') S.inbox = null;
+      render(false); toast('Remitentes guardados');
+      break;
+    }
     case 'gmailq-save': S.f.gmailQ = $('#gmailq').value.trim(); saveFilters(); S.inbox = null; toast('Búsqueda de Gmail guardada'); break;
     case 'export-all': {
       const a = document.createElement('a');

@@ -630,3 +630,4 @@ code{font-size:.85em;color:var(--acc-hi)}
 a.btn{text-decoration:none;color:var(--fg)}
 a.btn.primary{color:var(--on-acc)}
 a.btn.ghost{color:var(--muted)}
+.seg button{display:inline-flex;align-items:center;gap:6px}

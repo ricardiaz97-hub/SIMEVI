@@ -66,10 +66,10 @@ const PAGO_ESTADOS = [
 ];
 const PAGO_E = Object.fromEntries(PAGO_ESTADOS.map(e => [e.k, e]));
 const pagoAbierto = p => p.estado === 'disponible' || p.estado === 'oficina';
-const TABLAS = { clientes: 'Clientes', polizas: 'Pólizas', tramites: 'Trámites', pagos: 'Pagos', correos: 'Correos' };
+const TABLAS = { clientes: 'Clientes', polizas: 'Pólizas', tramites: 'Trámites', pagos: 'Pagos', correos: 'Correos', ajustes: 'Ajustes' };
 
 /* ---------- estado ---------- */
-const DB = { clientes: [], polizas: [], tramites: [], pagos: [], bitacora: [], correos: [] };
+const DB = { clientes: [], polizas: [], tramites: [], pagos: [], bitacora: [], correos: [], ajustes: [] };
 const S = {
   mode: 'demo', me: null, users: [], route: 'inicio', arg: '',
   q: '', f: { tTipo: 'todos', tResp: '', tVista: 'tablero', tCerrados: false, pEstado: 'pend', polMod: 'todas', polRamo: '', polEst: '', cliQ: '', bandeja: 'pend', bitUser: '' },
@@ -118,7 +118,7 @@ const nextCodigo = () => {
 };
 
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v3';
+const DEMO_KEY = 'simevi-demo-v4';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -324,7 +324,8 @@ function seedDemo() {
     ['ricardo', -8, 'movió', 'tramites', 't7', `T-${y}-0029 a Cerrado`]
   ].map(([w, n, accion, tabla, ref, resumen], i) => ({ id: 'b' + i, fecha: ts(Math.floor(n), n % 1 ? 11 : 9 + i % 8, (i * 13) % 60), por: w === 'ricardo' ? R : SD, accion, tabla, ref, resumen }));
 
-  return { clientes: C, polizas: P, tramites: Tm, pagos: Pg, bitacora: bit, correos: Co, inbox };
+  const Aj = [{ id: 'remitentes', valor: 'injiboa.com.sv, sisa.com.sv, palig.com, fedecredito.com.sv', ...by(R, -1, 9) }];
+  return { clientes: C, polizas: P, tramites: Tm, pagos: Pg, bitacora: bit, correos: Co, ajustes: Aj, inbox };
 }
 
 function bootDemoData(reset) {
@@ -430,7 +431,7 @@ function counts() {
   return {
     tramites: DB.tramites.filter(t => t.etapa === 'recibido').length,
     pagos: DB.pagos.filter(pagoAbierto).length,
-    bandeja: S.inbox ? S.inbox.filter(m => !mailDone(m)).length : 0
+    bandeja: S.inbox ? correosVisibles().filter(m => !mailDone(m)).length : 0
   };
 }
 
@@ -1512,6 +1513,28 @@ async function renderPortal(tok) {
 /* ---------- Bandeja de Gmail ---------- */
 const DOMINIOS = { sisa: 'SISA', asesuisa: 'ASESUISA', pacifico: 'Seguros del Pacífico', mapfre: 'MAPFRE La Centro Americana', fedecredito: 'Seguros Fedecrédito', palig: 'Pan-American Life', panamerican: 'Pan-American Life', segurosazul: 'Seguros Azul', azul: 'Seguros Azul', davivienda: 'Davivienda Seguros', assa: 'ASSA', futuro: 'Seguros Futuro', acsa: 'Aseguradora Agrícola Comercial', atlantida: 'Atlántida Vida', qualitas: 'Quálitas' };
 const DEFAULT_GMAIL_Q = 'newer_than:30d -category:promotions -category:social -category:updates';
+
+/* Remitentes de confianza: la Bandeja solo trae correos de estos dominios o direcciones
+   (más los correos de los clientes registrados), para no revisar todo Gmail. */
+const REMITENTES_BASE = 'injiboa.com.sv, sisa.com.sv';
+const ajuste = (id, def) => DB.ajustes.find(a => a.id === id)?.valor ?? def;
+const remitentes = () => [...new Set(String(ajuste('remitentes', REMITENTES_BASE)).split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean))];
+const conClientes = () => ajuste('remitentes-clientes', 'si') !== 'no';
+function filtroCorreos() {
+  const l = remitentes();
+  if (conClientes()) DB.clientes.forEach(c => { if (c.correo) l.push(c.correo.toLowerCase().trim()); });
+  return [...new Set(l)];
+}
+function deConfianza(from) {
+  const f = String(from || '').toLowerCase();
+  return filtroCorreos().some(x => x.includes('@') ? f === x : (f.endsWith('@' + x) || f.endsWith('.' + x)));
+}
+function gmailQuery() {
+  if (S.f.bandejaTodos) return S.f.gmailQ || DEFAULT_GMAIL_Q;
+  const l = filtroCorreos();
+  return l.length ? `newer_than:30d from:(${l.join(' OR ')})` : DEFAULT_GMAIL_Q;
+}
+const correosVisibles = () => (S.inbox || []).filter(m => S.f.bandejaTodos || deConfianza(m.from));
 const buzonNombre = c => firstName(S.users.find(u => u.email === c)) || c.split('@')[0];
 const mailDone = m => DB.correos.some(c => c.id === m.id);
 
@@ -1564,7 +1587,7 @@ async function loadInbox(force) {
   S.inboxLoading = true; S.inboxErr = ''; S.inboxCode = '';
   if (S.route === 'bandeja') render(false);
   try {
-    const d = await api('api/gmail?q=' + encodeURIComponent(S.f.gmailQ || DEFAULT_GMAIL_Q));
+    const d = await api('api/gmail?q=' + encodeURIComponent(gmailQuery()));
     S.inbox = d.messages || [];
     S.buzones = d.buzones || [];
     if (d.errores?.length) S.inboxErr = d.errores.map(x => `${x.cuenta}: ${x.message}`).join(' · ');
@@ -1576,7 +1599,7 @@ async function loadInbox(force) {
 VIEWS.bandeja = () => {
   if (!S.inbox && !S.inboxLoading) setTimeout(() => loadInbox());
   const f = S.f;
-  const all = S.inbox || [];
+  const all = correosVisibles();
   const list = all.filter(m => f.bandeja === 'pend' ? !mailDone(m) : mailDone(m));
   const kinds = { solicitud: ['Nueva solicitud', 'info'], numero: ['Número de reclamo', 'gold'], pago: ['Pago disponible', 'ok'], info: ['Ya registrado', ''] };
   const rows = list.map(m => {
@@ -1618,7 +1641,11 @@ VIEWS.bandeja = () => {
     `<button class="btn" type="button" data-act="inbox-refresh" ${S.inboxLoading ? 'disabled' : ''}>${ic('arrows-clockwise')}${S.inboxLoading ? 'Leyendo…' : 'Actualizar'}</button>`) + `
   <div class="toolbar"><div class="seg" role="group" aria-label="Correos">
     <button type="button" data-act="filter" data-k="bandeja" data-v="pend" aria-pressed="${f.bandeja === 'pend'}">Por revisar${pendN ? ` · ${pendN}` : ''}</button>
-    <button type="button" data-act="filter" data-k="bandeja" data-v="hechos" aria-pressed="${f.bandeja === 'hechos'}">Procesados</button></div></div>
+    <button type="button" data-act="filter" data-k="bandeja" data-v="hechos" aria-pressed="${f.bandeja === 'hechos'}">Procesados</button></div>
+    <div class="seg" role="group" aria-label="Remitentes">
+    <button type="button" data-act="bandeja-todos" data-v="" aria-pressed="${!f.bandejaTodos}">${ic('funnel')}Remitentes clave</button>
+    <button type="button" data-act="bandeja-todos" data-v="1" aria-pressed="${!!f.bandejaTodos}">Todos</button></div>
+    ${!f.bandejaTodos ? `<span class="muted" style="font-size:.8rem">${esc(remitentes().join(', '))}${conClientes() ? ` y ${DB.clientes.filter(c => c.correo).length} clientes` : ''} · <a href="#/ajustes">Editar</a></span>` : ''}</div>
   ${S.inboxCode === 'sin_gmail' ? `<div class="banner">${ic('envelope-simple')}<span>Para ver correos aquí, conecta tu Gmail de trabajo. Silvia conecta el suyo desde su sesión.</span><a class="btn primary sm" href="api/google/connect?para=gmail">${ic('google-logo')}Conectar mi Gmail</a></div>`
   : S.inboxErr ? `<div class="banner" style="background:var(--bad-soft);box-shadow:inset 0 0 0 1px var(--bad)">${ic('warning')}<span>No se pudo leer Gmail: ${esc(S.inboxErr)}</span><a class="btn sm" href="api/diagnose" target="_blank">Diagnóstico</a></div>` : ''}
   ${S.inboxCode === 'sin_gmail' ? '' : `<div class="panel">${S.inboxLoading && !S.inbox ? `<div class="panel-b">${'<div class="skel" style="margin:14px 0;width:70%"></div><div class="skel" style="margin:14px 0 26px;width:90%"></div>'.repeat(3)}</div>` : rows || `<div class="panel-b">${emptyState('tray', f.bandeja === 'pend' ? 'Bandeja al día' : 'Nada procesado todavía', f.bandeja === 'pend' ? 'No hay correos nuevos por revisar.' : 'Los correos que conviertas aparecerán aquí.')}</div>`}</div>`}`;
@@ -1726,8 +1753,11 @@ VIEWS.ajustes = () => {
       ${S.mode === 'demo' ? `<div class="seg" role="group" aria-label="Persona">${S.users.map(u => `<button type="button" data-act="set-user" data-v="${esc(u.email)}" aria-pressed="${u.email === S.me.email}">${esc(u.nombre)}</button>`).join('')}</div>` : `<button class="btn" type="button" data-act="logout">${ic('sign-out')}Cerrar sesión</button>`}
     </div></div>
     <div class="panel"><div class="panel-h"><h2>BANDEJA</h2></div><div class="panel-b">
-      ${fld('Qué correos leer de Gmail', `<input type="text" id="gmailq" value="${esc(S.f.gmailQ || DEFAULT_GMAIL_Q)}">`, '', 'Usa la misma búsqueda que en Gmail. Ej.: <code>label:simevi newer_than:14d</code>')}
-      <button class="btn sm" type="button" data-act="gmailq-save" style="margin-top:10px">Guardar</button>
+      ${fld('Remitentes clave', `<textarea id="remitentes" rows="3" placeholder="sisa.com.sv, injiboa.com.sv">${esc(remitentes().join(', '))}</textarea>`, '', 'Dominios o correos separados por coma. Un dominio incluye a todas sus personas: <code>sisa.com.sv</code> trae a notificaciones@, reclamos@, etc. Es la misma lista para Silvia y para ti.')}
+      <label class="check" style="margin-top:10px"><input type="checkbox" id="remit-cli" ${conClientes() ? 'checked' : ''}>Incluir también los correos de los clientes registrados</label>
+      <button class="btn sm primary" type="button" data-act="remitentes-save" style="margin-top:12px">Guardar remitentes</button>
+      <div class="sec">${fld('Búsqueda cuando eliges “Todos”', `<input type="text" id="gmailq" value="${esc(S.f.gmailQ || DEFAULT_GMAIL_Q)}">`, '', 'Avanzado: la misma búsqueda que en Gmail.')}
+      <button class="btn sm" type="button" data-act="gmailq-save" style="margin-top:10px">Guardar búsqueda</button></div>
     </div></div>
     <div class="panel"><div class="panel-h"><h2>PANTALLA Y DATOS</h2></div><div class="panel-b" style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
       <label class="check"><input type="checkbox" data-act-change="lite" ${lite ? 'checked' : ''}>Modo ligero (sin vidrio ni animaciones, para teléfonos lentos)</label>
@@ -2160,6 +2190,19 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'logout': await fetch('api/logout', { method: 'POST' }); location.reload(); break;
+    case 'bandeja-todos': S.f.bandejaTodos = !!el.dataset.v; saveFilters(); if (S.mode === 'live') { S.inbox = null; loadInbox(true); } else render(false); break;
+    case 'remitentes-save': {
+      const valor = $('#remitentes').value.split(/[\s,;]+/).map(x => x.trim().toLowerCase().replace(/^@/, '')).filter(Boolean).join(', ');
+      if (!valor) { toast('Escribe al menos un dominio o correo', 'err'); break; }
+      const cli = $('#remit-cli').checked ? 'si' : 'no';
+      try {
+        await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes') || {}), id: 'remitentes', valor }, `Remitentes de la Bandeja: ${valor}`);
+        if (cli !== ajuste('remitentes-clientes', 'si')) await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'remitentes-clientes') || {}), id: 'remitentes-clientes', valor: cli }, cli === 'si' ? 'La Bandeja incluye correos de clientes' : 'La Bandeja ya no incluye correos de clientes');
+      } catch (err) { break; }
+      if (S.mode === 'live') S.inbox = null;
+      render(false); toast('Remitentes guardados');
+      break;
+    }
     case 'gmailq-save': S.f.gmailQ = $('#gmailq').value.trim(); saveFilters(); S.inbox = null; toast('Búsqueda de Gmail guardada'); break;
     case 'export-all': {
       const a = document.createElement('a');

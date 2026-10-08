@@ -66,10 +66,10 @@ const PAGO_ESTADOS = [
 ];
 const PAGO_E = Object.fromEntries(PAGO_ESTADOS.map(e => [e.k, e]));
 const pagoAbierto = p => p.estado === 'disponible' || p.estado === 'oficina';
-const TABLAS = { clientes: 'Clientes', polizas: 'Pólizas', tramites: 'Trámites', pagos: 'Pagos', correos: 'Correos' };
+const TABLAS = { clientes: 'Clientes', polizas: 'Pólizas', tramites: 'Trámites', pagos: 'Pagos', correos: 'Correos', ajustes: 'Ajustes' };
 
 /* ---------- estado ---------- */
-const DB = { clientes: [], polizas: [], tramites: [], pagos: [], bitacora: [], correos: [] };
+const DB = { clientes: [], polizas: [], tramites: [], pagos: [], bitacora: [], correos: [], ajustes: [] };
 const S = {
   mode: 'demo', me: null, users: [], route: 'inicio', arg: '',
   q: '', f: { tTipo: 'todos', tResp: '', tVista: 'tablero', tCerrados: false, pEstado: 'pend', polMod: 'todas', polRamo: '', polEst: '', cliQ: '', bandeja: 'pend', bitUser: '' },

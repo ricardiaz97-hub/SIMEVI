@@ -88,7 +88,7 @@ function counts() {
   return {
     tramites: DB.tramites.filter(t => t.etapa === 'recibido').length,
     pagos: DB.pagos.filter(pagoAbierto).length,
-    bandeja: S.inbox ? S.inbox.filter(m => !mailDone(m)).length : 0
+    bandeja: S.inbox ? correosVisibles().filter(m => !mailDone(m)).length : 0
   };
 }
 

@@ -1,5 +1,5 @@
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v3';
+const DEMO_KEY = 'simevi-demo-v4';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -205,7 +205,8 @@ function seedDemo() {
     ['ricardo', -8, 'movió', 'tramites', 't7', `T-${y}-0029 a Cerrado`]
   ].map(([w, n, accion, tabla, ref, resumen], i) => ({ id: 'b' + i, fecha: ts(Math.floor(n), n % 1 ? 11 : 9 + i % 8, (i * 13) % 60), por: w === 'ricardo' ? R : SD, accion, tabla, ref, resumen }));
 
-  return { clientes: C, polizas: P, tramites: Tm, pagos: Pg, bitacora: bit, correos: Co, inbox };
+  const Aj = [{ id: 'remitentes', valor: 'injiboa.com.sv, sisa.com.sv, palig.com, fedecredito.com.sv', ...by(R, -1, 9) }];
+  return { clientes: C, polizas: P, tramites: Tm, pagos: Pg, bitacora: bit, correos: Co, ajustes: Aj, inbox };
 }
 
 function bootDemoData(reset) {
