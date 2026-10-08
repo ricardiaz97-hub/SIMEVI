@@ -9,7 +9,7 @@ function filtrarTramites() {
     if (f.tTipo === 'otros' && ['Reclamo', 'Modificación', 'Inclusión', 'Exclusión', 'Renovación'].includes(t.tipo)) return false;
     if (f.tResp && t.responsable !== f.tResp) return false;
     if (q) {
-      const hay = norm([t.codigo, t.asunto, t.numeroReclamo, t.aseguradora, clienteNombre(t.clienteId), poliza(t.polizaId)?.numero].join(' '));
+      const hay = norm([t.codigo, t.asunto, t.asegurado, t.certificado, t.numeroReclamo, t.aseguradora, clienteNombre(t.clienteId), poliza(t.polizaId)?.numero].join(' '));
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -129,6 +129,8 @@ function tramiteHTML(t, isNew) {
           ${fld('Póliza', `<select name="polizaId">${polizaOpts(t.clienteId, t.polizaId)}</select>`)}
           ${fld('Tipo', `<select name="tipo">${opt(TIPOS, t.tipo)}</select>`)}
           ${fld('Aseguradora', inp('aseguradora', t.aseguradora, 'text', 'list="dl-aseg"'))}
+          ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente"'))}
+          ${fld('N.º de certificado', inp('certificado', t.certificado))}
           ${fld('Asunto', inp('asunto', t.asunto, 'text', 'placeholder="Ej.: Reembolso de medicamentos de octubre"'), 'full')}
           ${fld('Detalle', `<textarea name="descripcion" placeholder="Lo que pidió el cliente">${esc(t.descripcion)}</textarea>`, 'full')}
         </div>

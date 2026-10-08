@@ -66,11 +66,12 @@ addEventListener('popstate', () => { if (drawerEl()) closeDrawer(true); });
 /* ---------- navegación ---------- */
 const ROUTES = [
   { k: 'inicio', n: 'Inicio', i: 'house' },
+  { k: 'reclamos', n: 'Reclamos', i: 'first-aid' },
   { k: 'tramites', n: 'Trámites', i: 'folder-open' },
   { k: 'pagos', n: 'Pagos', i: 'money-wavy' },
   { k: 'polizas', n: 'Pólizas', i: 'shield-check' },
-  { k: 'clientes', n: 'Clientes', i: 'users' },
-  { k: 'bandeja', n: 'Bandeja', i: 'tray', desk: true },
+  { k: 'clientes', n: 'Clientes', i: 'users', desk: true },
+  { k: 'bandeja', n: 'Bandeja', i: 'tray', desk: true, sep: true },
   { k: 'bitacora', n: 'Bitácora', i: 'clock-counter-clockwise', desk: true },
   { k: 'ajustes', n: 'Ajustes', i: 'gear-six', desk: true }
 ];
@@ -98,10 +99,10 @@ function shell(content) {
   <div class="app">
     <nav class="rail" aria-label="Secciones">
       <a class="brand" href="#/inicio" aria-label="SIMEVI, inicio"><img src="img/sv.webp" alt=""><span><b>SIMEVI</b><small>CORREDORES DE SEGUROS</small></span></a>
-      ${ROUTES.slice(0, 5).map(navItem).join('')}
+      ${ROUTES.slice(0, 6).map(navItem).join('')}
       <button class="nav mob-more" type="button" data-act="more" style="display:none">${ic('dots-three')}<span>Más</span></button>
       <div class="sep"></div>
-      ${ROUTES.slice(5).map(navItem).join('')}
+      ${ROUTES.slice(6).map(navItem).join('')}
       <div class="rail-foot">
         ${av(S.me.email)}
         <div class="who"><b>${esc(S.me.nombre)}</b><small>${S.mode === 'demo' ? 'Demostración' : 'Conectado a Google'}</small></div>
@@ -152,6 +153,7 @@ function render(animate) {
     window.scrollTo(0, 0);
   } else v.classList.remove('enter');
   lastRoute = S.route;
+  if (S.route === 'reclamos') syncEntry();
   if (keepFocus) { const el = document.getElementById(keepFocus); if (el) { el.focus(); try { el.setSelectionRange(sel, sel); } catch (e) { } } }
   document.title = (ROUTES.find(r => r.k === S.route)?.n || 'Buscar') + ' · SIMEVI';
   const more = $('.mob-more'); if (more) more.style.display = matchMedia('(max-width:760px)').matches ? '' : 'none';

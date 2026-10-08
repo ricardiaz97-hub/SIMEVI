@@ -241,9 +241,9 @@ async function copyPortal(cid) {
   catch (e) { await ask('Copia este enlace y envíaselo al cliente:', { value: url, ok: 'Listo', cancel: 'Cerrar' }); }
 }
 
-function openCliente(id) {
+function openCliente(id, prefill = {}) {
   const c0 = id ? cliente(id) : null;
-  const c = c0 ? structuredClone(c0) : { id: '', nombre: '', tipo: 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: '', portal: token() };
+  const c = c0 ? structuredClone(c0) : { id: '', nombre: '', tipo: 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: '', portal: token(), ...prefill };
   cur = { tabla: 'clientes', row: c, isNew: !c0 };
   const isNew = !c0;
   const pol = DB.polizas.filter(p => p.clienteId === c.id && c.id);
