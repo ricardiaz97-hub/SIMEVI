@@ -141,7 +141,7 @@ VIEWS.bandeja = () => {
     let acts = '';
     const x = !done && !k.conversacion ? extraer(m) : null;
     const varios = x && x.rows.length > 1;
-    const pdfs = !done && !k.estado && (m.attachments || []).some(leible);
+    const pdfs = !done && !k.estado && !k.conversacion && (m.attachments || []).some(leible);
     const auto = coincide(m.from, autoRemitentes());
     let pill;
     if (done) {
@@ -168,7 +168,7 @@ VIEWS.bandeja = () => {
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
       pill = `<span class="pill">Conversación</span>`;
     } else {
-      if (pdfs) acts += btn('mail-leer', m.id, 'Leer adjuntos', 'primary', 'sparkle');
+      if (pdfs) acts += btn('mail-leer', m.id, `Leer ${(m.attachments || []).filter(leible).length === 1 ? 'adjunto' : (m.attachments || []).filter(leible).length + ' adjuntos'}`, 'primary', 'sparkle');
       if (varios) {
         acts += btn('mail-varios', m.id, `Revisar los ${x.rows.length}`, pdfs ? '' : 'primary', 'list-bullets');
       } else {
@@ -186,6 +186,9 @@ VIEWS.bandeja = () => {
         : `<span class="pill ${{ numero: 'gold', pago: 'ok', info: '' }[k.kind]}">${{ numero: 'Número de reclamo', pago: 'Pago disponible', info: 'Ya registrado' }[k.kind]}</span>`;
     }
     if (done) pill = done.estado === 'auto' ? `<span class="pill gold">${ic('sparkle')}Automático</span>` : '';
+    // "Leer adjuntos" en cualquier correo con adjuntos (también en avisos, conversaciones y procesados)
+    const leibles = (m.attachments || []).filter(leible).length;
+    if (leibles && !pdfs) acts = btn('mail-leer', m.id, `Leer ${leibles === 1 ? 'adjunto' : leibles + ' adjuntos'}`, done ? 'ghost' : '', 'sparkle') + acts;
     if (S.mode === 'live') acts += `<a class="btn ghost sm" href="https://mail.google.com/mail/?authuser=${encodeURIComponent(m.cuenta || '')}#all/${esc(m.threadId || m.id)}" target="_blank" rel="noopener">${ic('arrow-square-out')}Gmail</a>`;
     const para = (S.buzones || []).length > 1 && (m.cuentas || [m.cuenta]).filter(Boolean);
     return `<article class="mail ${done ? 'done' : ''}">
