@@ -8,6 +8,15 @@ const PARENTESCOS = ['Titular', 'Cónyuge', 'Hijo(a)', 'Padre/Madre', 'Otro'];
 
 const limpiar = s => String(s || '').replace(/[_|‘’'`"“”]+/g, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s.:;,\-]+|[\s.:;,\-]+$/g, '').trim();
 const nombrePropio = s => limpiar(s).toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|Y)\b/g, w => w.toLowerCase());
+// Nombre de empresa: "HIBRONSA, S.A. DE C.V." → "HIBRONSA, S.A. de C.V."; "INGENIO CENTRAL…" → "Ingenio Central…"
+function nombreEmpresa(s) {
+  const orig = limpiar(s).replace(/\s*\.{2,}\s*$/, '');
+  let n = nombrePropio(orig);
+  const primera = orig.split(/[\s,]+/)[0] || '';
+  if (/^[A-ZÁÉÍÓÚÑ]{3,10}$/.test(primera) && orig.replace(/,.*$/, '').trim().split(/\s+/).length <= 2) n = n.replace(/^\S+?(?=[\s,]|$)/, primera);
+  return n.replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.').replace(/\bS\.?\s*a\.?$/i, 'S.A.').replace(/\bS\.\s*a\.?\s*(?=,|$)/i, 'S.A.');
+}
+const ramoDe = num => /^(VI|VC|VG|VICO|VIDA)/i.test(num) ? 'Vida' : /^AP/i.test(num) ? 'Accidentes personales' : /^(AU|FLT|AUTO)/i.test(num) ? 'Automotor' : /^INC/i.test(num) ? 'Incendio' : 'Gastos médicos';
 const tokens = s => norm(s).replace(/[^a-z0-9ñ ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['de', 'del', 'la', 'las', 'los', 'sa', 'cv', 'y'].includes(w));
 
 function fechaISO(s) {

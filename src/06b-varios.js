@@ -155,27 +155,133 @@ function openVarios(mailId) {
   openVariosDesde({ mail: m, mode: x.mode, kind: x.kind, aseguradora: x.aseguradora, rows, pool: m.attachments || [], sueltos: x.sueltos });
 }
 
-/* Lee los PDF adjuntos de un correo y arma una fila por cada formulario de reclamo */
+/* Lee todos los adjuntos de un correo y dice qué es cada uno.
+   Solo formularios de reclamo → la revisión de reclamos de siempre.
+   Otros documentos (inclusión, exclusión, beneficiarios, liquidación…) → la hoja "Lo que dicen los adjuntos". */
 async function leerPdfsCorreo(mailId) {
   const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
-  const pdfs = (m.attachments || []).filter(a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name));
-  if (!pdfs.length) return toast('Este correo no trae PDF', 'err');
+  if (!(m.attachments || []).some(leible)) return toast('Este correo no trae adjuntos que se puedan leer', 'err');
+  if (S.mode !== 'demo') toast(`Leyendo ${(m.attachments || []).filter(leible).length} adjunto(s)…`);
   let textos;
-  if (S.mode === 'demo') textos = pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
-  else {
-    toast(`Leyendo ${pdfs.length} ${pdfs.length === 1 ? 'PDF' : 'PDFs'}…`);
-    try { textos = (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || []; }
-    catch (e) { return toast('No se pudo leer: ' + e.message, 'err'); }
+  try { textos = await textosAdj(m); } catch (e) { return toast('No se pudo leer: ' + e.message, 'err'); }
+  const docs = textos.map(x => ({ ...x, ...analizarDoc(x.texto, x.name) }));
+  const forms = docs.flatMap(d => d.forms.map(f => ({ f, ref: d.ref })));
+  const k = classify(m);
+  const ctx = { clienteId: clienteDeRemitente(m, k), polizaId: k.polizaId };
+  const props = propuestasDeDocs(docs, ctx);
+  if (forms.length && !props.length) {
+    return openVariosDesde({
+      mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: aseguradoraDeCorreo(m.from),
+      titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`,
+      rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m.attachments || []
+    });
   }
-  const forms = textos.flatMap(t => leerFormularios(t.texto).map(f => ({ f, ref: t.ref })));
-  const malos = textos.filter(t => t.error);
-  if (!forms.length) { toast(malos.length ? `No se pudo leer: ${malos[0].error}` : 'No encontré formularios de reclamo en los PDF. Usa “Crear trámite”.', 'err'); return; }
-  const aseg = aseguradoraDeCorreo(m.from);
-  openVariosDesde({
-    mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: aseg,
-    titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`,
-    rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m.attachments || []
-  });
+  DX = { mail: m, docs, forms, props };
+  const d = openDrawer(docsLeidosHTML()); d.classList.add('wide');
+}
+
+let DX = null;
+const chip = (l, v) => v ? `<span class="dx-f"><span>${l}</span>${esc(v)}</span>` : '';
+function docsLeidosHTML() {
+  const { mail: m, docs, forms, props } = DX;
+  const n = props.filter(p => p.crear).length;
+  return `
+  <div class="drawer-h"><div class="t"><span class="label">${m ? `${esc(m.fromName || m.from)} · ${fmtAgo(m.fecha)}` : 'Documentos'}</span><h2>Lo que dicen los adjuntos</h2>
+    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(m?.subject || '')}</div></div>
+    <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="drawer-b">
+    <div class="dx-docs">${docs.map(d => `<article class="dx-doc card">
+      <div class="dx-h">${ic(d.tipo.i || 'file')}<b>${esc(d.name || 'Documento')}</b><span class="pill ${d.tipo.k === 'vacio' ? 'bad' : d.tipo.apoyo ? '' : 'gold'}">${esc(d.tipo.n)}${d.forms.length > 1 ? ' · ' + d.forms.length : ''}</span></div>
+      <div class="dx-fs">${d.forms.length ? d.forms.map(f => chip('Reclamo', `${shortName(f.paciente || f.afiliado)}${f.total ? ' · ' + fmtMoney(f.total) : ''}`)).join('') : [
+        chip('Nombre', d.campos.nombre), chip('Contratante', d.campos.contratante), chip('Póliza', d.campos.poliza), chip('Cert.', d.campos.certificado), chip('DUI', d.campos.dui),
+        chip('Nacimiento', d.campos.nacimiento && fmtDate(d.campos.nacimiento)), chip('Fecha efectiva', d.campos.efectiva && fmtDate(d.campos.efectiva)), chip('Plan', d.campos.plan),
+        chip('Suma', d.campos.suma && fmtMoney(d.campos.suma)), chip(d.tipo.k === 'liquidacion' ? 'A pagar' : 'Monto', d.campos.monto && fmtMoney(d.campos.monto)),
+        d.campos.beneficiarios.length ? chip('Beneficiarios', d.campos.beneficiarios.map(b => `${shortName(b.nombre)} ${b.pct}%`).join(', ')) : ''].join('') || `<span class="faint" style="font-size:.82rem">${esc(d.error || d.resumen || 'Sin datos reconocibles')}</span>`}</div>
+      ${d.texto ? `<details><summary>Ver texto</summary><pre class="dx-txt">${esc(d.texto.slice(0, 3000))}</pre></details>` : ''}
+    </article>`).join('')}</div>
+    ${forms.length ? `<div class="sec"><div class="label">Formularios de reclamo</div><button class="btn" type="button" data-act="dx-reclamos">${ic('first-aid')}Revisar ${forms.length} ${forms.length === 1 ? 'reclamo' : 'reclamos'}</button></div>` : ''}
+    ${props.length ? `<div class="sec"><div class="label">Trámites que propone</div><div class="dx-props">${props.map((p, i) => p.kind === 'pago' ? `
+      <section class="dx-prop card ${p.crear ? '' : 'off'}"><label class="check"><input type="checkbox" data-dx="${i}:crear" ${p.crear ? 'checked' : ''}><b>${esc(p.titulo)}</b></label>
+        <div class="grid2" style="margin-top:8px">${fld('Reclamo', `<select data-dx="${i}:tramiteId">${opt(DB.tramites.filter(t => t.tipo === 'Reclamo' && tramiteAbierto(t)).map(t => [t.id, `${t.codigo} · ${shortName(t.paciente || t.asegurado || clienteNombre(t.clienteId))}${t.numeroReclamo ? ' · ' + t.numeroReclamo : ''}`]), p.tramiteId, 'Elige el reclamo')}</select>`)}
+        ${fld('Monto del cheque (US$)', `<input type="number" step="0.01" min="0" data-dx="${i}:monto" value="${esc(p.monto)}">`)}</div></section>` : `
+      <section class="dx-prop card ${p.crear ? '' : 'off'}"><div class="dx-ph"><label class="check"><input type="checkbox" data-dx="${i}:crear" ${p.crear ? 'checked' : ''}><b>${esc(p.asunto)}</b></label>
+        ${p.tramiteId ? `<span class="pill gold">Se agrega a ${esc(tramite(p.tramiteId)?.codigo)}</span><button class="btn ghost sm" type="button" data-act="dx-nuevo" data-i="${i}">Hacer nuevo</button>` : '<span class="pill info">Trámite nuevo</span>'}</div>
+        <div class="grid3" style="margin-top:8px">
+          ${fld('Tipo', `<select data-dx="${i}:tipo">${opt(TIPOS, p.tipo)}</select>`)}
+          ${fld('Cliente', `<select data-dx="${i}:clienteId">${clienteOpts(p.clienteId)}</select>`, '', !p.clienteId && p.clienteTxt ? `Se creará “${esc(shortName(p.clienteTxt))}”` : '')}
+          ${fld('Póliza', `<select data-dx="${i}:polizaId">${polizaOpts(p.clienteId, p.polizaId)}</select>`, '', !p.polizaId && p.polizaTxt ? `Se creará ${esc(p.polizaTxt)}` : '')}
+          ${fld('Asegurado', `<input type="text" data-dx="${i}:asegurado" value="${esc(p.asegurado)}" list="dl-personas">`)}
+          ${fld('Certificado', `<input type="text" data-dx="${i}:certificado" value="${esc(p.certificado)}">`)}
+          ${fld('Asunto', `<input type="text" data-dx="${i}:asunto" value="${esc(p.asunto)}">`)}
+          ${fld('Detalle', `<textarea data-dx="${i}:descripcion" rows="2">${esc(p.descripcion)}</textarea>`, 'full')}
+        </div>
+        <div class="faint" style="font-size:.78rem;margin-top:6px">${ic('paperclip')} ${p.refs.map(r => esc(docs.find(d => d.ref === r)?.name || r)).join(', ')}</div></section>`).join('')}</div></div>`
+    : !forms.length ? `<p class="muted" style="font-size:.88rem">No encontré un trámite claro en estos documentos. Puedes crearlo a mano desde la Bandeja con “Crear trámite”.</p>` : ''}
+    <datalist id="dl-personas">${personasIndex().filter(p => p.rol !== 'Cliente').slice(0, 400).map(p => `<option value="${esc(p.nombre)}">`).join('')}</datalist>
+  </div>
+  <div class="drawer-f"><span class="spacer"></span>${props.length ? `<button class="btn primary" type="button" data-act="dx-go" ${n ? '' : 'disabled'}>${ic('check')}${n === 1 ? 'Guardar 1 trámite' : `Guardar ${n} trámites`}</button>` : ''}</div>`;
+}
+function dxRedraw() { const d = drawerEl(); if (!d || !DX) return; const sc = $('.drawer-b', d).scrollTop; d.innerHTML = docsLeidosHTML(); $('.drawer-b', d).scrollTop = sc; }
+
+document.addEventListener('input', e => {
+  const k = e.target.dataset?.dx; if (!k || !DX) return;
+  const [i, f] = k.split(':'); const p = DX.props[+i];
+  p[f] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+});
+document.addEventListener('change', e => {
+  const k = e.target.dataset?.dx; if (!k || !DX) return;
+  const [i, f] = k.split(':'); const p = DX.props[+i];
+  p[f] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  if (f === 'clienteId') { p.clienteTxt = ''; const ps = polizasActivas(p.clienteId); p.polizaId = ps.length === 1 ? ps[0].id : ''; }
+  if (f === 'tipo' && TIPOS_DOC.find(t => t.tipo === p.tipo)) { /* el asunto se deja como lo escribieron */ }
+  if (['crear', 'clienteId', 'tramiteId'].includes(f)) dxRedraw();
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act="dx-go"], [data-act="dx-reclamos"], [data-act="dx-nuevo"], [data-act="tramite-leer"]'); if (!b) return;
+  if (b.dataset.act === 'tramite-leer') return leerDocsTramite(b);
+  if (!DX) return;
+  if (b.dataset.act === 'dx-nuevo') { DX.props[+b.dataset.i].tramiteId = ''; return dxRedraw(); }
+  if (b.dataset.act === 'dx-reclamos') {
+    const { mail: m, forms } = DX; DX = null;
+    return openVariosDesde({ mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: m ? aseguradoraDeCorreo(m.from) : '', titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`, rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m?.attachments || [] });
+  }
+  const malos = DX.props.filter(p => p.crear && p.kind === 'tramite' && !p.clienteId && !p.clienteTxt);
+  if (malos.length) return toast('Elige el cliente de cada trámite', 'err');
+  b.disabled = true;
+  try {
+    const m = DX.mail;
+    const hechos = await guardarPropuestas(DX.props, { mail: m, docBy: m ? docDeCorreo(m) : DX.docBy });
+    if (m && hechos.length) await markMail(m.id, `${hechos.length === 1 ? 'Trámite' : 'Trámites'} ${hechos.map(h => h.codigo).join(', ')} (de los adjuntos)`, hechos[0].id);
+    DX = null; closeDrawer(); render(false);
+    toast(hechos.length ? `${hechos.length} ${hechos.length === 1 ? 'trámite guardado' : 'trámites guardados'}: ${hechos.map(h => h.codigo).join(', ')}` : 'No había nada nuevo que guardar');
+  } catch (err) { b.disabled = false; toast('No se terminó: ' + err.message, 'err'); }
+});
+
+/* En un trámite abierto: leer sus documentos y llenar lo que falte */
+async function leerDocsTramite(btn) {
+  const t = cur?.row; if (!t) return;
+  const docs = (t.docs || []).filter(d => d.id && !String(d.id).startsWith('demo-') && !d.demo);
+  if (!docs.length) return toast(S.mode === 'demo' ? 'En la demo los documentos no tienen contenido. En la app real, Google los lee.' : 'Este trámite no tiene documentos guardados en Drive', 'err');
+  btn.disabled = true; toast(`Leyendo ${docs.length} documento(s)…`);
+  let textos;
+  try { textos = (await api('api/leer', { json: { fileIds: docs.slice(0, 8).map(d => d.id) } })).textos || []; }
+  catch (e) { btn.disabled = false; return toast('No se pudo leer: ' + e.message, 'err'); }
+  btn.disabled = false;
+  const leidos = textos.map(x => ({ ...x, name: docs.find(d => d.id === x.ref)?.name, ...analizarDoc(x.texto, docs.find(d => d.id === x.ref)?.name) }));
+  const f = $('#frm'); if (!f) return;
+  const puso = [];
+  const llenar = (name, v, label) => { if (v && f[name] && !String(f[name].value).trim()) { f[name].value = v; puso.push(label); } };
+  for (const d of leidos) {
+    const fo = d.forms[0];
+    if (fo) { llenar('asegurado', fo.afiliado, 'asegurado'); llenar('certificado', fo.certificado, 'certificado'); llenar('paciente', fo.paciente && parecido(fo.paciente, fo.afiliado) < 0.8 ? fo.paciente : '', 'paciente'); llenar('monto', fo.total, 'monto'); llenar('descripcion', fo.notas, 'detalle'); }
+    llenar('asegurado', d.campos.nombre, 'asegurado'); llenar('certificado', d.campos.certificado, 'certificado');
+    if (t.tipo === 'Reclamo') llenar('monto', d.campos.monto, 'monto');
+    const p = polizaPorNumero(d.campos.poliza || fo?.poliza);
+    if (p && !f.polizaId.value && f.clienteId.value === p.clienteId) { f.polizaId.value = p.id; puso.push('póliza'); }
+  }
+  const resumen = leidos.map(d => `${d.name}: ${d.tipo.n}`).join(' · ');
+  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'nota', texto: `Documentos leídos. ${resumen}` }];
+  toast(puso.length ? `Llené: ${[...new Set(puso)].join(', ')}. Revisa y pulsa Guardar.` : `Leídos: ${resumen}. No había casillas vacías que llenar.`);
 }
 
 function openVariosDesde(o) {

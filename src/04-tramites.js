@@ -155,7 +155,7 @@ function tramiteHTML(t, isNew) {
         <div style="margin-top:10px">${fld('Mensaje para el cliente', inp('notaCliente', t.notaCliente, 'text', 'placeholder="Ej.: Tu cheque ya está en nuestra oficina"'), '', 'Lo verá tal cual en su portal.')}</div>
       </div>
     </form>
-    <div class="sec"><div class="label">Documentos</div>${docsBlock(t.docs, 'tramite')}</div>
+    <div class="sec"><div class="label">Documentos${(t.docs || []).length ? `<button class="btn ghost sm" type="button" data-act="tramite-leer" style="margin-left:auto">${ic('sparkle')}Leer y llenar</button>` : ''}</div>${docsBlock(t.docs, 'tramite')}</div>
     ${!isNew ? `
     ${pagos.length || t.tipo === 'Reclamo' ? `<div class="sec"><div class="label">Pagos</div>${pagos.length ? `<div class="docs">${pagos.map(p => `<button class="doc" type="button" data-act="open-pago" data-id="${p.id}">${ic('money-wavy')}<span>${esc(p.forma)} ${esc(p.numero || '')} · ${fmtMoney(p.monto)}</span><span class="pill ${PAGO_E[p.estado]?.cls}">${esc(PAGO_E[p.estado]?.n)}</span></button>`).join('')}</div>` : ''}
       <button class="btn sm" type="button" data-act="pago-from-tramite" style="margin-top:8px">${ic('plus')}Registrar cheque o depósito</button></div>` : ''}

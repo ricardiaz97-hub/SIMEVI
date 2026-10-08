@@ -689,3 +689,24 @@ a.btn.ghost{color:var(--muted)}
 .linkish{background:none;border:0;padding:0;color:var(--acc-hi);font:inherit;cursor:pointer;text-align:left}
 @media (hover:hover) and (pointer:fine){.linkish:hover{text-decoration:underline;text-underline-offset:3px}}
 table mark,.doc mark{background:rgba(201,160,99,.28);color:inherit;border-radius:2px}
+
+/* Lo que dicen los adjuntos */
+.dx-docs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.dx-doc{padding:12px 14px}
+.dx-h{display:flex;align-items:center;gap:8px;min-width:0}
+.dx-h b{font-weight:600;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.dx-h svg{width:18px;height:18px;color:var(--acc);flex:none}
+.dx-fs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.dx-f{display:inline-flex;gap:6px;align-items:baseline;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);font-size:.8rem;max-width:100%}
+.dx-f span{font:500 .58rem/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.dx-doc details{margin-top:8px;font-size:.8rem;color:var(--muted)}
+.dx-doc summary{cursor:pointer}
+.dx-txt{white-space:pre-wrap;max-height:220px;overflow:auto;font:12px/1.45 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.25);padding:10px;border-radius:6px;margin:6px 0 0}
+.dx-props{display:flex;flex-direction:column;gap:10px}
+.dx-prop{padding:12px 14px;transition:opacity .2s ease}
+.dx-prop.off{opacity:.55}
+.dx-ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dx-ph .check{flex:1;min-width:200px}
+@media (max-width:760px){.dx-prop .grid3{grid-template-columns:1fr}}
+.dx-h b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
+.dx-h .pill{flex:none}

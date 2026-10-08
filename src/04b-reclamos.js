@@ -158,7 +158,7 @@ async function asegurarEntidades(st, aseguradora = '') {
     if (ya) st.clienteId = ya.id;
     else {
       const empresa = /\b(s\.?\s*a\.?|s\.?a\.? de c\.?v\.?|ingenio|grupo|colegio|distribuidora|compa[nñ]|corporaci|asociaci|fundaci|cooperativa|banco|hospital|universidad)\b/i.test(nombre);
-      const c = { id: '', nombre, tipo: empresa ? 'Empresa' : 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: 'Creado desde un reclamo.', portal: token() };
+      const c = { id: '', nombre, tipo: empresa || st.esEmpresa ? 'Empresa' : 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: `Creado desde ${st.origenTxt || 'un reclamo'}.`, portal: token() };
       await save('clientes', c, `${shortName(nombre)} (creado desde un reclamo)`);
       st.clienteId = c.id;
     }
@@ -170,7 +170,7 @@ async function asegurarEntidades(st, aseguradora = '') {
     if (ya) st.polizaId = ya.id;
     else {
       const col = esColectiva(st) || cliente(st.clienteId)?.tipo === 'Empresa';
-      const p = { id: '', numero: num, aseguradora, ramo: 'Gastos médicos', modalidad: col ? 'Colectiva' : 'Individual', clienteId: st.clienteId, vigenciaDesde: '', vigenciaHasta: '', prima: '', frecuencia: 'Mensual', suma: '', cancelada: false, notas: 'Creada desde un reclamo. Completa vigencia y prima.', asegurados: [], docs: [] };
+      const p = { id: '', numero: num, aseguradora, ramo: st.ramo || ramoDe(num), modalidad: col ? 'Colectiva' : 'Individual', clienteId: st.clienteId, vigenciaDesde: '', vigenciaHasta: '', prima: '', frecuencia: 'Mensual', suma: '', cancelada: false, notas: `Creada desde ${st.origenTxt || 'un reclamo'}. Completa vigencia y prima.`, asegurados: [], docs: [] };
       await save('polizas', p, `${num} (creada desde un reclamo)`);
       st.polizaId = p.id;
     }

@@ -205,12 +205,26 @@ function clienteDeRemitente(m, k) {
 }
 
 const esPdf = a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name || '');
-async function textosPdf(m) {
-  const pdfs = (m.attachments || []).filter(esPdf);
-  if (!pdfs.length) return [];
-  if (S.mode === 'demo') return pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
-  return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || [];
+async function textosAdj(m, soloPdf = false) {
+  const lista = (m.attachments || []).filter(soloPdf ? esPdf : leible).slice(0, 8);
+  if (!lista.length) return [];
+  if (S.mode === 'demo') return lista.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
+  return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: lista.map(a => a.id) } } })).textos || [];
 }
+const textosPdf = m => textosAdj(m, true);
+// Copia a Drive un adjunto cuando hace falta (en la carpeta del cliente); se recuerda para no copiarlo dos veces
+function docDeCorreo(m) {
+  const cache = {};
+  return async (ref, cid) => {
+    const key = (cid || '') + '|' + ref;
+    if (cache[key]) return cache[key];
+    const a = (m.attachments || []).find(x => x.id === ref); if (!a) return null;
+    if (S.mode === 'demo') return (cache[key] = { id: 'demo-' + ref, name: a.name, size: a.size });
+    const d = await api('api/gmail', { json: { id: m.id, cuenta: m.cuenta, attachments: [ref], folder: clienteNombre(cid) || 'Sin cliente' } }).catch(() => null);
+    return (cache[key] = d?.docs?.[0] || null);
+  };
+}
+
 // El monto a pagar en una carta de liquidación
 async function montoDeAdjuntos(m) {
   const textos = await textosPdf(m);
@@ -233,34 +247,39 @@ const responsableDe = m => { const c = (m.cuentas || [m.cuenta]).find(x => S.use
 /* Correo nuevo de un remitente automático → trámite(s) */
 async function crearAuto(m, k) {
   const tipo = tipoDeCorreo(m);
-  if (!tipo) return null;
   const clienteId = clienteDeRemitente(m, k);
   const quien = m.fromName || m.from;
   const fecha = (m.fecha || nowISO()).slice(0, 10);
-  const forms = tipo === 'Reclamo' ? (await textosPdf(m).catch(() => [])).flatMap(x => leerFormularios(x.texto).map(f => ({ f, ref: x.ref }))) : [];
-  // Sin cliente reconocido solo se sigue si el formulario dice quién es el contratante (se crea al guardar)
-  if (!clienteId && !forms.some(x => x.f.contratante)) return null;
-  const carpeta = clienteId ? clienteNombre(clienteId) : shortName(nombrePropio(forms.find(x => x.f.contratante).f.contratante));
-  const docs = (m.attachments || []).length ? await importAttachments(m, carpeta).catch(() => []) : [];
+  // Se leen todos los adjuntos: formularios de reclamo, inclusiones, exclusiones, beneficiarios…
+  const leidos = (m.attachments || []).some(leible) ? (await textosAdj(m).catch(() => [])).map(x => ({ ...x, ...analizarDoc(x.texto, x.name) })) : [];
+  const forms = leidos.flatMap(d => d.forms.map(f => ({ f, ref: d.ref })));
+  const props = propuestasDeDocs(leidos, { clienteId, polizaId: k.polizaId }).filter(p => p.kind === 'tramite' && (p.clienteId || p.clienteTxt));
+  if (!tipo && !forms.length && !props.length) return null;
+  if (!clienteId && !forms.some(x => x.f.contratante) && !props.length) return null;
+  const docBy = docDeCorreo(m);
   const hechos = [];
-  if (forms.length) {
-    for (const x of forms) {
-      const st = filaDeFormulario(x.f, null);
-      if (st.tramiteId) continue; // ese reclamo ya estaba registrado
-      if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
-      if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombrePropio(st.clienteTxt).replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.');
-      const asegF = poliza(st.polizaId)?.aseguradora || aseguradoraEnTexto(x.f.texto) || '';
-      await asegurarEntidades(st, asegF);
-      const suyos = docs.filter(d => d.partId === x.ref || d.id === 'demo-' + x.ref);
-      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || asegF, origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
-      nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
-      await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
-      hechos.push(nt);
-    }
-    if (!hechos.length) { await markMail(m.id, 'Automático · los reclamos del PDF ya estaban registrados', '', 'auto'); return []; }
-  } else {
+  for (const x of forms) {
+    const st = filaDeFormulario(x.f, null);
+    if (st.tramiteId) continue; // ese reclamo ya estaba registrado
+    if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
+    if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombreEmpresa(st.clienteTxt);
+    const asegF = poliza(st.polizaId)?.aseguradora || aseguradoraEnTexto(x.f.texto) || '';
+    await asegurarEntidades(st, asegF);
+    // Su PDF y los de apoyo (facturas sueltas, recetas)
+    const refs = [x.ref, ...leidos.filter(d => d.tipo.apoyo).map(d => d.ref)];
+    const docs = (await Promise.all([...new Set(refs)].map(r => docBy(r, st.clienteId)))).filter(Boolean);
+    const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs, aseguradora: poliza(st.polizaId)?.aseguradora || asegF, origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
+    nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
+    await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
+    hechos.push(nt);
+  }
+  if (props.length) hechos.push(...await guardarPropuestas(props, { mail: m, auto: true, docBy }));
+  if (!hechos.length && (forms.length || props.length)) { await markMail(m.id, 'Automático · lo de los adjuntos ya estaba registrado', '', 'auto'); return []; }
+  if (!hechos.length) {
+    if (!tipo || !clienteId) return null;
     const ps = DB.polizas.filter(p => p.clienteId === clienteId && !p.cancelada);
     const pid = k.polizaId || (ps.length === 1 ? ps[0].id : '');
+    const docs = (await Promise.all((m.attachments || []).map(a => docBy(a.id, clienteId)))).filter(Boolean);
     const t = {
       id: '', codigo: nextCodigo(), tipo, clienteId, polizaId: pid, aseguradora: poliza(pid)?.aseguradora || k.aseguradora || '', asunto: m.subject || tipo,
       descripcion: resumenCuerpo(m, 500), canal: CANALES[0], etapa: 'recibido', numeroReclamo: '', monto: tipo === 'Reclamo' && k.monto ? k.monto : '',

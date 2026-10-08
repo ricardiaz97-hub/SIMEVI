@@ -131,7 +131,7 @@ const nextCodigo = () => {
 };
 
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v7';
+const DEMO_KEY = 'simevi-demo-v8';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -321,6 +321,14 @@ function seedDemo() {
 
   const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '', x = {}) => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body, cuenta: R, mid: `<${id}@demo>`, raiz: x.raiz || `<${id}@demo>`, respuesta: !!x.raiz, ...x });
   const inbox = [
+    mail('m19', 0, 15, 'rrhh@hibronsa.com.sv', 'Recursos Humanos HIBRONSA', 'Cambio de beneficiarios Carlos Mendoza', 'Buenas tardes Silvia, adjunto el formulario de cambio de beneficiarios de Carlos Mendoza y copia de DUI.', [
+      { id: 'a19', name: 'Designacion beneficiarios C Mendoza.pdf', size: 320000, mime: 'application/pdf', ocr: 'FORMULARIO DE DESIGNACIÓN DE BENEFICIARIOS\nContratante: HIBRONSA, S.A. DE C.V.\nPóliza No.: VICO-611208\nNombre del asegurado: CARLOS ENRIQUE MENDOZA LARA   Certificado No.: 45\nBENEFICIARIOS\nANA LUCIA MENDOZA RIVERA   HIJA   50%\nMARIA JOSE LARA DE MENDOZA   ESPOSA   50%\nFecha: 05 de octubre de 2026' },
+      { id: 'a20', name: 'DUI Carlos Mendoza.jpg', size: 410000, mime: 'image/jpeg', ocr: 'REPÚBLICA DE EL SALVADOR DOCUMENTO ÚNICO DE IDENTIDAD\nMENDOZA LARA CARLOS ENRIQUE\n03344556-7' }
+    ], 'Buenas tardes Silvia, adjunto el formulario de cambio de beneficiarios de Carlos Mendoza y copia de DUI.\nSaludos.'),
+    mail('m18', 0, 14, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla', 'Personal nuevo octubre', 'Buenas tardes, envío solicitudes del personal que ingresó este mes para que los incluyan en la póliza de gastos médicos.', [
+      { id: 'a21', name: 'Solicitud Kevin Rivas.pdf', size: 400000, mime: 'application/pdf', ocr: 'SISA VIDA, S.A. SEGUROS DE PERSONAS\nSOLICITUD DE INCLUSIÓN AL SEGURO COLECTIVO DE GASTOS MÉDICOS\nContratante: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPóliza No.: SALC-507549\nNombre del empleado: KEVIN ALEXANDER RIVAS MOLINA   DUI: 05873321-4\nFecha de nacimiento: 14/03/1996   Sexo: M\nFecha de ingreso: 01/10/2026\nCargo: Operario de molinos   Plan: Básico\nFirma del empleado' },
+      { id: 'a22', name: 'Solicitud Glenda Ayala.pdf', size: 380000, mime: 'application/pdf', ocr: 'SISA VIDA, S.A. SEGUROS DE PERSONAS\nSOLICITUD DE INCLUSIÓN AL SEGURO COLECTIVO DE GASTOS MÉDICOS\nContratante: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPóliza No.: SALC-507549\nNombre del empleado: GLENDA MARISOL AYALA PORTILLO   DUI: 04411278-9\nFecha de nacimiento: 22/07/1991   Sexo: M\nFecha de ingreso: 01/10/2026\nCargo: Operario de molinos   Plan: Básico\nFirma del empleado' }
+    ], 'Buenas tardes, envío solicitudes del personal que ingresó este mes para que los incluyan en la póliza de gastos médicos.\nSaludos.'),
     mail('m14', 0, 13, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Reclamos en análisis', 'Póliza: 507549 Contratante: INJIBOA, S.A DE C.V. Asegurado: ADRIANA REBECA MARTINEZ JIMENEZ. Su reclamo SALC-133283-2026 se encuentra en análisis.', [], 'NOTIFICACIÓN\nPóliza: 507549\nContratante: INJIBOA, S.A DE C.V.\nAsegurado: ADRIANA REBECA MARTINEZ JIMENEZ\nEstimado Cliente,\nLe informamos que su reclamo No. SALC-133283-2026 se encuentra en análisis.\nSISA, VIDA, S.A., SEGUROS DE PERSONAS'),
     mail('m13', 0, 12, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Aviso de Reclamo', 'Póliza: 507549 Contratante: INJIBOA, S.A DE C.V. Asegurado: ADRIANA REBECA MARTINEZ JIMENEZ Por este medio le confirmamos el ingreso de su aviso de reclamo, SALC-133283-2026…', [], 'NOTIFICACIÓN\nEstimado Cliente,\nPóliza: 507549\nContratante: INJIBOA, S.A DE C.V.\nAsegurado: ADRIANA REBECA MARTINEZ JIMENEZ\nPor este medio le confirmamos el ingreso de su aviso de reclamo, SALC-133283-2026, en referencia al siniestro ocurrido el día 03/10/2026, a nuestro sistema.\nAsimismo, hacemos de su conocimiento que el aviso del reclamo no constituye una aceptación de cobertura por parte de SISA, VIDA, S.A., SEGUROS DE PERSONAS ya que el pago del siniestro se determinará luego del análisis del mismo en base a las condiciones de la póliza.\nCualquier consulta que tenga, favor no dude en contactarnos a nuestro SISAphone 2241-0000 o por SISA Chat desde www.sisa.com.sv, donde siempre será un placer atenderle.\nSin más que agregar nos suscribimos.\nSISA, VIDA, S.A., SEGUROS DE PERSONAS'),
     mail('m16', 0, 11, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Trámite registrado bajo la referencia: MOD-57.1_511432', 'Estimado Intermediario SILVIA MAGDALENA VEGA DE DIAZ: Su información ha sido recibida satisfactoriamente…', [], 'NOTIFICACIÓN\nEstimado Intermediario SILVIA MAGDALENA VEGA DE DIAZ:\nSu información ha sido recibida satisfactoriamente según la siguiente información:\nCódigo Referencia: MOD-57.1_511432.\nPóliza: VICO-503046.\nCliente: INJIBOA, S.A DE C.V. ..\nTipo de trámite: Modificación CAMBIO DE BENEFICIARIOS.\nObservaciones: Solicitan procesar el cambio de beneficiarios conforme a documentación anexa..\nEl seguimiento a su solicitud podrá realizarlo a través del siguiente link:\nPresione para abrir el tracking\nTambién podrá dar seguimiento a su solicitud ingresando a su portal de EVA en la opción \'Mis Tareas\'.'),
@@ -345,7 +353,7 @@ function seedDemo() {
     mail('m3', -1, 17, 'jralfaro.m@hotmail.com', 'José Roberto Alfaro', 'Facturas de taller para mi reclamo', 'Buenas tardes, les adjunto la factura del taller y la proforma de repuestos que me pidió MAPFRE. Póliza AU-2025-602917.', [{ id: 'a1', name: 'Factura taller Autofix.pdf', size: 380000, mime: 'application/pdf' }, { id: 'a2', name: 'Proforma repuestos.pdf', size: 214000, mime: 'application/pdf' }]),
     mail('m4', -1, 11, 'analucia.portillo@outlook.com', 'Ana Lucía Portillo', 'Reembolso consulta pediatra', 'Hola Silvia, te mando la factura de la consulta de mi hijo y la receta. ¿Me ayudas a meter el reembolso? Póliza GM-I-334019. Gracias.', [{ id: 'a3', name: 'Factura consulta pediatra.pdf', size: 160000, mime: 'application/pdf' }, { id: 'a4', name: 'Receta.jpg', size: 920000, mime: 'image/jpeg' }]),
     mail('m5', -2, 15, 'pagos@palig.com', 'Pan-American Life Pagos', 'Aviso de depósito PAL-GM-2026-30418', 'Se realizó transferencia por $3,132.00 a la cuenta del asegurado. Referencia TRF-77120394.', []),
-    mail('m6', -3, 10, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Exclusión de empleado por renuncia', 'Buen día, favor excluir a Fredy Antonio Mancía de la póliza de vida colectiva VC-2025-004517 a partir del 30 de septiembre. Adjunto carta de renuncia.', [{ id: 'a5', name: 'Carta renuncia Fredy Mancia.pdf', size: 98000, mime: 'application/pdf' }])
+    mail('m6', -3, 10, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Exclusión de empleado por renuncia', 'Buen día, favor excluir a Fredy Antonio Mancía de la póliza de vida colectiva VC-2025-004517 a partir del 30 de septiembre. Adjunto carta de renuncia.', [{ id: 'a5', name: 'Carta renuncia Fredy Mancia.pdf', size: 98000, mime: 'application/pdf', ocr: 'San Salvador, 28 de septiembre de 2026\nSeñores Grupo Agroindustrial Las Brisas, S.A. de C.V.\nPor este medio presento mi renuncia irrevocable al cargo de bodeguero.\nNombre: FREDY ANTONIO MANCÍA\nFecha de retiro: 30/09/2026\nPóliza No.: VC-2025-004517\nAtentamente' }])
   ];
   const Co = [{ id: 'm5', estado: 'procesado', tramiteId: 't7', nota: 'Pago registrado', ...by(R, -2, 16) }];
 
@@ -797,7 +805,7 @@ function tramiteHTML(t, isNew) {
         <div style="margin-top:10px">${fld('Mensaje para el cliente', inp('notaCliente', t.notaCliente, 'text', 'placeholder="Ej.: Tu cheque ya está en nuestra oficina"'), '', 'Lo verá tal cual en su portal.')}</div>
       </div>
     </form>
-    <div class="sec"><div class="label">Documentos</div>${docsBlock(t.docs, 'tramite')}</div>
+    <div class="sec"><div class="label">Documentos${(t.docs || []).length ? `<button class="btn ghost sm" type="button" data-act="tramite-leer" style="margin-left:auto">${ic('sparkle')}Leer y llenar</button>` : ''}</div>${docsBlock(t.docs, 'tramite')}</div>
     ${!isNew ? `
     ${pagos.length || t.tipo === 'Reclamo' ? `<div class="sec"><div class="label">Pagos</div>${pagos.length ? `<div class="docs">${pagos.map(p => `<button class="doc" type="button" data-act="open-pago" data-id="${p.id}">${ic('money-wavy')}<span>${esc(p.forma)} ${esc(p.numero || '')} · ${fmtMoney(p.monto)}</span><span class="pill ${PAGO_E[p.estado]?.cls}">${esc(PAGO_E[p.estado]?.n)}</span></button>`).join('')}</div>` : ''}
       <button class="btn sm" type="button" data-act="pago-from-tramite" style="margin-top:8px">${ic('plus')}Registrar cheque o depósito</button></div>` : ''}
@@ -916,6 +924,15 @@ const PARENTESCOS = ['Titular', 'Cónyuge', 'Hijo(a)', 'Padre/Madre', 'Otro'];
 
 const limpiar = s => String(s || '').replace(/[_|‘’'`"“”]+/g, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s.:;,\-]+|[\s.:;,\-]+$/g, '').trim();
 const nombrePropio = s => limpiar(s).toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|Y)\b/g, w => w.toLowerCase());
+// Nombre de empresa: "HIBRONSA, S.A. DE C.V." → "HIBRONSA, S.A. de C.V."; "INGENIO CENTRAL…" → "Ingenio Central…"
+function nombreEmpresa(s) {
+  const orig = limpiar(s).replace(/\s*\.{2,}\s*$/, '');
+  let n = nombrePropio(orig);
+  const primera = orig.split(/[\s,]+/)[0] || '';
+  if (/^[A-ZÁÉÍÓÚÑ]{3,10}$/.test(primera) && orig.replace(/,.*$/, '').trim().split(/\s+/).length <= 2) n = n.replace(/^\S+?(?=[\s,]|$)/, primera);
+  return n.replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.').replace(/\bS\.?\s*a\.?$/i, 'S.A.').replace(/\bS\.\s*a\.?\s*(?=,|$)/i, 'S.A.');
+}
+const ramoDe = num => /^(VI|VC|VG|VICO|VIDA)/i.test(num) ? 'Vida' : /^AP/i.test(num) ? 'Accidentes personales' : /^(AU|FLT|AUTO)/i.test(num) ? 'Automotor' : /^INC/i.test(num) ? 'Incendio' : 'Gastos médicos';
 const tokens = s => norm(s).replace(/[^a-z0-9ñ ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['de', 'del', 'la', 'las', 'los', 'sa', 'cv', 'y'].includes(w));
 
 function fechaISO(s) {
@@ -1197,7 +1214,7 @@ async function asegurarEntidades(st, aseguradora = '') {
     if (ya) st.clienteId = ya.id;
     else {
       const empresa = /\b(s\.?\s*a\.?|s\.?a\.? de c\.?v\.?|ingenio|grupo|colegio|distribuidora|compa[nñ]|corporaci|asociaci|fundaci|cooperativa|banco|hospital|universidad)\b/i.test(nombre);
-      const c = { id: '', nombre, tipo: empresa ? 'Empresa' : 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: 'Creado desde un reclamo.', portal: token() };
+      const c = { id: '', nombre, tipo: empresa || st.esEmpresa ? 'Empresa' : 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: `Creado desde ${st.origenTxt || 'un reclamo'}.`, portal: token() };
       await save('clientes', c, `${shortName(nombre)} (creado desde un reclamo)`);
       st.clienteId = c.id;
     }
@@ -1209,7 +1226,7 @@ async function asegurarEntidades(st, aseguradora = '') {
     if (ya) st.polizaId = ya.id;
     else {
       const col = esColectiva(st) || cliente(st.clienteId)?.tipo === 'Empresa';
-      const p = { id: '', numero: num, aseguradora, ramo: 'Gastos médicos', modalidad: col ? 'Colectiva' : 'Individual', clienteId: st.clienteId, vigenciaDesde: '', vigenciaHasta: '', prima: '', frecuencia: 'Mensual', suma: '', cancelada: false, notas: 'Creada desde un reclamo. Completa vigencia y prima.', asegurados: [], docs: [] };
+      const p = { id: '', numero: num, aseguradora, ramo: st.ramo || ramoDe(num), modalidad: col ? 'Colectiva' : 'Individual', clienteId: st.clienteId, vigenciaDesde: '', vigenciaHasta: '', prima: '', frecuencia: 'Mensual', suma: '', cancelada: false, notas: `Creada desde ${st.origenTxt || 'un reclamo'}. Completa vigencia y prima.`, asegurados: [], docs: [] };
       await save('polizas', p, `${num} (creada desde un reclamo)`);
       st.polizaId = p.id;
     }
@@ -1497,6 +1514,159 @@ async function marcarIngresadoPortal(id) {
   PORTAL_ABIERTO.delete(id);
   toast(`${t.codigo}: Ingresado`);
   render(false);
+}
+
+/* ---------- Lector de documentos (todos los adjuntos, no solo reclamos) ----------
+   Con el texto que Google saca de cada adjunto (PDF escaneado, foto, Word, Excel), reconoce
+   qué documento es y saca sus datos. Con eso propone el trámite: reclamos, inclusiones,
+   exclusiones, cambios de beneficiarios, renovaciones, emisiones o el pago de una liquidación. */
+
+const TIPOS_DOC = [
+  { k: 'liquidacion', n: 'Carta de liquidación', i: 'hand-coins', re: /liquidaci[oó]n|finiquito|total\s+a\s+(reembolsar|pagar)|monto\s+a\s+pagar|valor\s+del\s+cheque/g },
+  { k: 'beneficiarios', n: 'Cambio de beneficiarios', i: 'users', tipo: 'Modificación', asunto: 'Cambio de beneficiarios', re: /beneficiari[oa]s?|designaci[oó]n\s+de\s+beneficiari/g },
+  { k: 'inclusion', n: 'Solicitud de inclusión', i: 'user-plus', tipo: 'Inclusión', asunto: 'Inclusión', re: /inclusi[oó]n|incluir|solicitud\s+de\s+(seguro|ingreso|afiliaci[oó]n|adhesi[oó]n)|alta\s+de\s+(personal|emplead|asegurad)|certificado\s+individual|nuevo\s+ingreso|fecha\s+de\s+ingreso/g },
+  { k: 'exclusion', n: 'Exclusión', i: 'user', tipo: 'Exclusión', asunto: 'Exclusión', re: /exclusi[oó]n|excluir|baja\s+de|retiro\s+de|renuncia|fecha\s+de\s+(retiro|baja|salida)|cese\s+laboral/g },
+  { k: 'renovacion', n: 'Renovación', i: 'arrows-clockwise', tipo: 'Renovación', asunto: 'Renovación', re: /renovaci[oó]n|renovar/g },
+  { k: 'emision', n: 'Cotización o emisión', i: 'shield-check', tipo: 'Emisión', asunto: 'Emisión', re: /cotizaci[oó]n|solicitud\s+de\s+emisi[oó]n|nueva\s+p[oó]liza|propuesta\s+de\s+seguro/g },
+  { k: 'modificacion', n: 'Modificación', i: 'note-pencil', tipo: 'Modificación', asunto: 'Modificación', re: /modificaci[oó]n|cambio\s+de\s+(plan|suma|datos|nombre|direcci)|endoso|correcci[oó]n|actualizaci[oó]n\s+de\s+datos/g },
+  { k: 'identidad', n: 'Documento de identidad', i: 'identification-card', apoyo: true, re: /documento\s+[uú]nico\s+de\s+identidad|\bdui\b|registro\s+nacional\s+de\s+las\s+personas|pasaporte/g },
+  { k: 'factura', n: 'Factura o receta', i: 'receipt', apoyo: true, re: /factura|cr[eé]dito\s+fiscal|receta|farmacia|recibo\s+de\s+pago/g }
+];
+const TIPO_DOC = Object.fromEntries(TIPOS_DOC.map(t => [t.k, t]));
+const leible = a => /pdf|image|word|officedocument|msword|excel|spreadsheet|csv|text\/plain/i.test(a.mime || '') || /\.(pdf|jpe?g|png|heic|docx?|xlsx?|csv|txt)$/i.test(a.name || '');
+
+const FECHA_RE = '(\\d{1,2}\\s*(?:[\\/-]|de)\\s*(?:\\d{1,2}|[a-záéíóú]+)\\s*(?:[\\/-]|de[l]?)\\s*\\d{2,4})';
+function camposDoc(texto) {
+  const t = String(texto || '');
+  const g = re => { const x = t.match(re); return x ? limpiar(x[x.length - 1]) : ''; };
+  const linea = '([^\\n]{3,80})';
+  const c = {};
+  c.poliza = (g(/P[oó]liza\s*(?:No\.?|N[°º]|#|n[uú]mero)?\s*[:.]?\s*([A-Z]{0,6}-?\d[\w.-]*\d)/i) || '').toUpperCase();
+  c.contratante = g(new RegExp(`(?:Contratante|Empresa|Patrono|Raz[oó]n\\s+social|Cliente)\\s*[:.]\\s*${linea}`, 'i')).replace(/\s{2,}.*$/, '');
+  c.nombre = nombrePropio(g(/(?:Nombre\s+(?:completo\s+)?(?:del?\s+)?(?:asegurado|empleado|solicitante|afiliado|trabajador)(?:\s+titular)?|Nombres?\s+y\s+apellidos?|Asegurado\s+titular|Asegurado|Empleado|Afiliado|Solicitante|Nombre)\s*[:.]\s*([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñü. ]{4,60}?)(?=\s{2,}|\s+(?:DUI|Edad|Fecha|Cert|Sexo|NIT|Cargo|No\.|N[°º])|\n|$)/i));
+  c.certificado = g(/Certificado\s*(?:No\.?|N[°º]|#)?\s*[:.]?\s*([A-Z0-9][A-Z0-9-]{0,12})\b/i);
+  c.dui = (t.match(/\b(\d{8}-\d)\b/) || [])[1] || '';
+  c.nacimiento = fechaISO(g(new RegExp(`Fecha\\s+de\\s+nacimiento\\s*[:.]?\\s*${FECHA_RE}`, 'i')));
+  c.efectiva = fechaISO(g(new RegExp(`Fecha\\s+(?:de\\s+)?(?:ingreso|efectiva|vigencia|retiro|baja|inicio|alta|salida|renuncia)\\s*[:.]?\\s*${FECHA_RE}`, 'i')));
+  c.plan = g(/Plan\s*[:.]\s*([^\n]{2,40})/i);
+  c.suma = montoDe(g(/Suma\s+asegurada\s*[:.]?\s*([^\n]{2,40})/i));
+  const tl = t.split('\n').find(l => /(total\s+a\s+(reembolsar|pagar)|monto\s+a\s+pagar|valor\s+del\s+cheque|total\s+pagado|neto)/i.test(l) && montoDe(l)) || t.split('\n').find(l => /total/i.test(l) && montoDe(l));
+  c.monto = tl ? montoDe(tl) : '';
+  // Beneficiarios: "MARÍA LÓPEZ   ESPOSA   50%" (columnas) o "María López, esposa, 50%"
+  const PAR = /^(hij[oa]s?|espos[oa]|c[oó]nyuge|compa[nñ]er[oa](\s+de\s+vida)?|madre|padre|herman[oa]|ti[oa]|sobrin[oa]|niet[oa]|abuel[oa]|otro)$/i;
+  c.beneficiarios = t.split('\n').filter(l => /\d\s*%/.test(l)).map(l => {
+    const pct = +((l.match(/(\d{1,3}(?:[.,]\d+)?)\s*%/) || [])[1] || '0').replace(',', '.');
+    const cols = l.replace(/(\d{1,3}(?:[.,]\d+)?)\s*%.*/, '').split(/\s{2,}|\t|\s*[,;|]\s*/).map(x => x.trim()).filter(Boolean);
+    let par = cols.find(x => PAR.test(x)) || '';
+    let nombre = cols.find(x => !PAR.test(x) && /[a-z]{2,}\s+[a-z]{2,}/i.test(x) && !/^\d/.test(x)) || '';
+    if (!par) { const m = nombre.match(/^(.*?)\s+(hij[oa]s?|espos[oa]|c[oó]nyuge|madre|padre|herman[oa])$/i); if (m) { nombre = m[1]; par = m[2]; } }
+    return { nombre: nombrePropio(nombre.replace(/^\d+[.)-]?\s*/, '')), parentesco: par ? nombrePropio(par) : '', pct };
+  }).filter(b => b.nombre && b.pct > 0 && b.pct <= 100);
+  c.codigos = codigosEn(t).slice(0, 30);
+  return c;
+}
+
+/* Qué documento es y qué dice */
+function analizarDoc(texto, nombreArchivo = '') {
+  const t = String(texto || '');
+  const forms = leerFormularios(t);
+  const n = norm(t) + ' ' + norm(nombreArchivo);
+  const puntos = TIPOS_DOC.map((x, i) => ({ x, s: (n.match(x.re) || []).length * (x.apoyo ? 0.6 : 1) - i * 0.01 })).filter(p => p.s > 0).sort((a, b) => b.s - a.s);
+  let tipo = forms.length ? { k: 'reclamo', n: 'Formulario de reclamo', i: 'first-aid', tipo: 'Reclamo' } : puntos[0]?.x || { k: 'otro', n: 'Documento', i: 'file', apoyo: true };
+  // Si casi no hay texto, se dice
+  if (!forms.length && t.replace(/\s+/g, '').length < 25) tipo = { k: 'vacio', n: 'No se pudo leer', i: 'warning', apoyo: true };
+  const campos = camposDoc(t);
+  const resumen = t.split('\n').map(l => l.trim()).filter(l => l.length > 12 && /[a-z]/i.test(l)).slice(0, 3).join(' · ').slice(0, 220);
+  return { tipo, campos, forms, resumen };
+}
+
+/* Propuestas de trámite a partir de los documentos leídos de un correo (o de archivos subidos) */
+function propuestasDeDocs(docs, ctx = {}) {
+  const props = [];
+  const apoyo = docs.filter(d => d.tipo.apoyo || d.tipo.k === 'reclamo');
+  const cliDe = d => {
+    const p = polizaPorNumero(d.campos.poliza);
+    if (p) return { clienteId: p.clienteId, polizaId: p.id };
+    const c = d.campos.contratante && clientePorNombre(d.campos.contratante, d.texto);
+    return { clienteId: c?.id || ctx.clienteId || '', polizaId: ctx.polizaId || '' };
+  };
+  for (const d of docs.filter(d => !d.tipo.apoyo && d.tipo.k !== 'reclamo')) {
+    const { clienteId, polizaId: pid0 } = cliDe(d);
+    let polizaId = pid0;
+    if (!polizaId && clienteId) { const ps = polizasActivas(clienteId); if (ps.length === 1) polizaId = ps[0].id; }
+    if (d.tipo.k === 'liquidacion') {
+      const t = DB.tramites.find(t => t.numeroReclamo && d.campos.codigos.includes(norm(t.numeroReclamo))) || null;
+      props.push({ kind: 'pago', crear: !!(t && d.campos.monto), tramiteId: t?.id || '', clienteId: t?.clienteId || clienteId, monto: d.campos.monto || '', refs: [d.ref], doc: d, titulo: `${d.tipo.n}${d.campos.monto ? ' · ' + fmtMoney(d.campos.monto) : ''}` });
+      continue;
+    }
+    const persona = d.campos.nombre || '';
+    const asunto = `${d.tipo.asunto}${persona ? ' de ' + shortName(persona) : ''}`;
+    const detalle = [
+      d.campos.certificado && `Certificado ${d.campos.certificado}`, d.campos.dui && `DUI ${d.campos.dui}`,
+      d.campos.nacimiento && `Nació el ${fmtDate(d.campos.nacimiento)}`, d.campos.efectiva && `Fecha efectiva ${fmtDate(d.campos.efectiva)}`,
+      d.campos.plan && `Plan ${d.campos.plan}`, d.campos.suma && `Suma asegurada ${fmtMoney(d.campos.suma)}`,
+      d.campos.beneficiarios.length && `Beneficiarios: ${d.campos.beneficiarios.map(b => `${b.nombre}${b.parentesco ? ' (' + b.parentesco.toLowerCase() + ')' : ''} ${b.pct}%`).join(', ')}`
+    ].filter(Boolean).join('. ');
+    // ¿Ya hay un trámite abierto igual? (mismo cliente, tipo y persona)
+    const ya = DB.tramites.find(t => tramiteAbierto(t) && clienteId && t.clienteId === clienteId && t.tipo === d.tipo.tipo && (!persona || parecido(t.asegurado || t.asunto, persona) >= 0.6));
+    props.push({ kind: 'tramite', crear: true, tipo: d.tipo.tipo, clienteId, clienteTxt: clienteId ? '' : nombreEmpresa(d.campos.contratante), polizaTxt: polizaId ? '' : d.campos.poliza, polizaId, asegurado: persona, certificado: d.campos.certificado, asunto, descripcion: detalle || d.resumen, refs: [d.ref], tramiteId: ya?.id || '', doc: d, persona: d.campos });
+  }
+  // Varios documentos del mismo tipo sin nombre: uno solo
+  const sinNombre = props.filter(p => p.kind === 'tramite' && !p.asegurado);
+  if (sinNombre.length > 1) { const [a, ...rest] = sinNombre; rest.forEach(r => { a.refs.push(...r.refs); props.splice(props.indexOf(r), 1); }); }
+  // Los de apoyo (facturas, DUI) van con cada trámite
+  props.filter(p => p.kind === 'tramite').forEach(p => p.refs.push(...apoyo.map(d => d.ref).filter(r => !p.refs.includes(r))));
+  return props;
+}
+
+/* Crea (o completa) los trámites propuestos. docBy(ref, clienteId) devuelve el documento en Drive. */
+async function guardarPropuestas(props, { mail = null, auto = false, docBy } = {}) {
+  const hechos = [];
+  const quien = mail ? (mail.fromName || mail.from) : '';
+  for (const p of props.filter(p => p.crear)) {
+    if (p.kind === 'pago') {
+      const t = tramite(p.tramiteId); if (!t || !(+p.monto > 0)) continue;
+      if (DB.pagos.some(x => x.tramiteId === t.id && Math.abs(+x.monto - +p.monto) < 0.01)) continue;
+      const pg = { id: '', tramiteId: t.id, clienteId: t.clienteId, aseguradora: t.aseguradora, forma: 'Cheque', numero: '', banco: '', monto: +p.monto, fechaAviso: todayISO(), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: 'disponible', notas: 'Según la carta de liquidación' + (auto ? ' (leída sola)' : '') };
+      await save('pagos', pg, `Cheque por ${fmtMoney(pg.monto)} · ${t.codigo} (carta de liquidación)`);
+      await linkPagoTramite(pg, true);
+      hechos.push(t); continue;
+    }
+    // Lo que falte (cliente, póliza, la persona en la colectiva) se crea como en los reclamos
+    if (p.clienteId || p.clienteTxt) {
+      const st = filaNueva({ clienteId: p.clienteId, clienteTxt: p.clienteTxt, polizaId: p.polizaId, polizaTxt: p.polizaId ? '' : p.polizaTxt || '', asegurado: p.asegurado, certificado: p.certificado, esEmpresa: true, origenTxt: p.doc ? `“${p.doc.name}”` : 'un documento' });
+      const aseg = poliza(p.polizaId)?.aseguradora || aseguradoraEnTexto(p.doc?.texto || '');
+      await asegurarEntidades(st, aseg);
+      p.clienteId = st.clienteId || p.clienteId; p.polizaId = st.polizaId || p.polizaId;
+    }
+    if (!p.clienteId) continue;
+    const docs = (await Promise.all(p.refs.map(r => docBy(r, p.clienteId)))).filter(Boolean);
+    const ex = tramite(p.tramiteId);
+    if (ex) {
+      const t = structuredClone(ex);
+      t.docs = [...(t.docs || []), ...docs.filter(d => !(t.docs || []).some(x => x.id === d.id))];
+      t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'correo', auto, texto: `${mail ? `Correo de ${quien}: ` : ''}${p.doc?.tipo.n || 'Documento'}${p.asegurado ? ' de ' + p.asegurado : ''}. ${p.descripcion || ''}`.trim() }];
+      await save('tramites', t, `${t.codigo}: ${docs.length} documento${docs.length === 1 ? '' : 's'}${auto ? ' (automático)' : ''}`);
+      hechos.push(t); continue;
+    }
+    const pol = poliza(p.polizaId);
+    const t = {
+      id: '', codigo: nextCodigo(), tipo: p.tipo, clienteId: p.clienteId, polizaId: p.polizaId || '', aseguradora: pol?.aseguradora || (mail ? aseguradoraEnTexto(p.doc?.texto || '') : '') || '',
+      asegurado: p.asegurado || '', certificado: p.certificado || '', asunto: p.asunto, descripcion: p.descripcion || '', canal: CANALES[0], etapa: 'recibido', numeroReclamo: '', monto: '',
+      fechaSolicitud: (mail?.fecha || nowISO()).slice(0, 10), fechaIngreso: '', responsable: mail ? responsableDe(mail) : S.me.email, visibleCliente: true, notaCliente: '', docs,
+      eventos: [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', a: 'recibido', auto, texto: `${mail ? `Recibido por correo de ${quien}. ` : ''}${auto ? 'SIMEVI lo creó solo leyendo ' : 'Datos leídos de '}${p.doc ? '“' + p.doc.name + '”' : 'los adjuntos'}.` }],
+      gmailId: mail?.id || '', hilo: mail?.raiz || ''
+    };
+    await save('tramites', t, `${t.codigo} ${t.tipo} · ${shortName(clienteNombre(t.clienteId))}${t.asegurado ? ' › ' + t.asegurado : ''}${auto ? ' (automático)' : ''}`);
+    // La persona queda en la lista de asegurados de la colectiva con su DUI y plan (para Personas y los reclamos)
+    const ent = pol?.modalidad === 'Colectiva' && t.asegurado && (pol.asegurados || []).find(a => norm(a.nombre) === norm(t.asegurado));
+    if (ent && ((p.persona?.dui && !ent.documento) || (p.persona?.plan && !ent.plan))) {
+      ent.documento = ent.documento || p.persona.dui || ''; ent.plan = ent.plan || p.persona.plan || '';
+      await save('polizas', pol, `${pol.numero}: datos de ${t.asegurado}`).catch(() => { });
+    }
+    hechos.push(t);
+  }
+  return hechos;
 }
 
 /* ---------- Pagos (libro de cheques y depósitos) ---------- */
@@ -2132,7 +2302,7 @@ VIEWS.bandeja = () => {
     let acts = '';
     const x = !done && !k.conversacion ? extraer(m) : null;
     const varios = x && x.rows.length > 1;
-    const pdfs = !done && !k.estado && (m.attachments || []).some(esPdf);
+    const pdfs = !done && !k.estado && (m.attachments || []).some(leible);
     const auto = coincide(m.from, autoRemitentes());
     let pill;
     if (done) {
@@ -2159,7 +2329,7 @@ VIEWS.bandeja = () => {
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
       pill = `<span class="pill">Conversación</span>`;
     } else {
-      if (pdfs) acts += btn('mail-leer', m.id, 'Leer reclamos del PDF', 'primary', 'sparkle');
+      if (pdfs) acts += btn('mail-leer', m.id, 'Leer adjuntos', 'primary', 'sparkle');
       if (varios) {
         acts += btn('mail-varios', m.id, `Revisar los ${x.rows.length}`, pdfs ? '' : 'primary', 'list-bullets');
       } else {
@@ -2519,27 +2689,133 @@ function openVarios(mailId) {
   openVariosDesde({ mail: m, mode: x.mode, kind: x.kind, aseguradora: x.aseguradora, rows, pool: m.attachments || [], sueltos: x.sueltos });
 }
 
-/* Lee los PDF adjuntos de un correo y arma una fila por cada formulario de reclamo */
+/* Lee todos los adjuntos de un correo y dice qué es cada uno.
+   Solo formularios de reclamo → la revisión de reclamos de siempre.
+   Otros documentos (inclusión, exclusión, beneficiarios, liquidación…) → la hoja "Lo que dicen los adjuntos". */
 async function leerPdfsCorreo(mailId) {
   const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
-  const pdfs = (m.attachments || []).filter(a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name));
-  if (!pdfs.length) return toast('Este correo no trae PDF', 'err');
+  if (!(m.attachments || []).some(leible)) return toast('Este correo no trae adjuntos que se puedan leer', 'err');
+  if (S.mode !== 'demo') toast(`Leyendo ${(m.attachments || []).filter(leible).length} adjunto(s)…`);
   let textos;
-  if (S.mode === 'demo') textos = pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
-  else {
-    toast(`Leyendo ${pdfs.length} ${pdfs.length === 1 ? 'PDF' : 'PDFs'}…`);
-    try { textos = (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || []; }
-    catch (e) { return toast('No se pudo leer: ' + e.message, 'err'); }
+  try { textos = await textosAdj(m); } catch (e) { return toast('No se pudo leer: ' + e.message, 'err'); }
+  const docs = textos.map(x => ({ ...x, ...analizarDoc(x.texto, x.name) }));
+  const forms = docs.flatMap(d => d.forms.map(f => ({ f, ref: d.ref })));
+  const k = classify(m);
+  const ctx = { clienteId: clienteDeRemitente(m, k), polizaId: k.polizaId };
+  const props = propuestasDeDocs(docs, ctx);
+  if (forms.length && !props.length) {
+    return openVariosDesde({
+      mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: aseguradoraDeCorreo(m.from),
+      titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`,
+      rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m.attachments || []
+    });
   }
-  const forms = textos.flatMap(t => leerFormularios(t.texto).map(f => ({ f, ref: t.ref })));
-  const malos = textos.filter(t => t.error);
-  if (!forms.length) { toast(malos.length ? `No se pudo leer: ${malos[0].error}` : 'No encontré formularios de reclamo en los PDF. Usa “Crear trámite”.', 'err'); return; }
-  const aseg = aseguradoraDeCorreo(m.from);
-  openVariosDesde({
-    mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: aseg,
-    titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`,
-    rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m.attachments || []
-  });
+  DX = { mail: m, docs, forms, props };
+  const d = openDrawer(docsLeidosHTML()); d.classList.add('wide');
+}
+
+let DX = null;
+const chip = (l, v) => v ? `<span class="dx-f"><span>${l}</span>${esc(v)}</span>` : '';
+function docsLeidosHTML() {
+  const { mail: m, docs, forms, props } = DX;
+  const n = props.filter(p => p.crear).length;
+  return `
+  <div class="drawer-h"><div class="t"><span class="label">${m ? `${esc(m.fromName || m.from)} · ${fmtAgo(m.fecha)}` : 'Documentos'}</span><h2>Lo que dicen los adjuntos</h2>
+    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(m?.subject || '')}</div></div>
+    <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="drawer-b">
+    <div class="dx-docs">${docs.map(d => `<article class="dx-doc card">
+      <div class="dx-h">${ic(d.tipo.i || 'file')}<b>${esc(d.name || 'Documento')}</b><span class="pill ${d.tipo.k === 'vacio' ? 'bad' : d.tipo.apoyo ? '' : 'gold'}">${esc(d.tipo.n)}${d.forms.length > 1 ? ' · ' + d.forms.length : ''}</span></div>
+      <div class="dx-fs">${d.forms.length ? d.forms.map(f => chip('Reclamo', `${shortName(f.paciente || f.afiliado)}${f.total ? ' · ' + fmtMoney(f.total) : ''}`)).join('') : [
+        chip('Nombre', d.campos.nombre), chip('Contratante', d.campos.contratante), chip('Póliza', d.campos.poliza), chip('Cert.', d.campos.certificado), chip('DUI', d.campos.dui),
+        chip('Nacimiento', d.campos.nacimiento && fmtDate(d.campos.nacimiento)), chip('Fecha efectiva', d.campos.efectiva && fmtDate(d.campos.efectiva)), chip('Plan', d.campos.plan),
+        chip('Suma', d.campos.suma && fmtMoney(d.campos.suma)), chip(d.tipo.k === 'liquidacion' ? 'A pagar' : 'Monto', d.campos.monto && fmtMoney(d.campos.monto)),
+        d.campos.beneficiarios.length ? chip('Beneficiarios', d.campos.beneficiarios.map(b => `${shortName(b.nombre)} ${b.pct}%`).join(', ')) : ''].join('') || `<span class="faint" style="font-size:.82rem">${esc(d.error || d.resumen || 'Sin datos reconocibles')}</span>`}</div>
+      ${d.texto ? `<details><summary>Ver texto</summary><pre class="dx-txt">${esc(d.texto.slice(0, 3000))}</pre></details>` : ''}
+    </article>`).join('')}</div>
+    ${forms.length ? `<div class="sec"><div class="label">Formularios de reclamo</div><button class="btn" type="button" data-act="dx-reclamos">${ic('first-aid')}Revisar ${forms.length} ${forms.length === 1 ? 'reclamo' : 'reclamos'}</button></div>` : ''}
+    ${props.length ? `<div class="sec"><div class="label">Trámites que propone</div><div class="dx-props">${props.map((p, i) => p.kind === 'pago' ? `
+      <section class="dx-prop card ${p.crear ? '' : 'off'}"><label class="check"><input type="checkbox" data-dx="${i}:crear" ${p.crear ? 'checked' : ''}><b>${esc(p.titulo)}</b></label>
+        <div class="grid2" style="margin-top:8px">${fld('Reclamo', `<select data-dx="${i}:tramiteId">${opt(DB.tramites.filter(t => t.tipo === 'Reclamo' && tramiteAbierto(t)).map(t => [t.id, `${t.codigo} · ${shortName(t.paciente || t.asegurado || clienteNombre(t.clienteId))}${t.numeroReclamo ? ' · ' + t.numeroReclamo : ''}`]), p.tramiteId, 'Elige el reclamo')}</select>`)}
+        ${fld('Monto del cheque (US$)', `<input type="number" step="0.01" min="0" data-dx="${i}:monto" value="${esc(p.monto)}">`)}</div></section>` : `
+      <section class="dx-prop card ${p.crear ? '' : 'off'}"><div class="dx-ph"><label class="check"><input type="checkbox" data-dx="${i}:crear" ${p.crear ? 'checked' : ''}><b>${esc(p.asunto)}</b></label>
+        ${p.tramiteId ? `<span class="pill gold">Se agrega a ${esc(tramite(p.tramiteId)?.codigo)}</span><button class="btn ghost sm" type="button" data-act="dx-nuevo" data-i="${i}">Hacer nuevo</button>` : '<span class="pill info">Trámite nuevo</span>'}</div>
+        <div class="grid3" style="margin-top:8px">
+          ${fld('Tipo', `<select data-dx="${i}:tipo">${opt(TIPOS, p.tipo)}</select>`)}
+          ${fld('Cliente', `<select data-dx="${i}:clienteId">${clienteOpts(p.clienteId)}</select>`, '', !p.clienteId && p.clienteTxt ? `Se creará “${esc(shortName(p.clienteTxt))}”` : '')}
+          ${fld('Póliza', `<select data-dx="${i}:polizaId">${polizaOpts(p.clienteId, p.polizaId)}</select>`, '', !p.polizaId && p.polizaTxt ? `Se creará ${esc(p.polizaTxt)}` : '')}
+          ${fld('Asegurado', `<input type="text" data-dx="${i}:asegurado" value="${esc(p.asegurado)}" list="dl-personas">`)}
+          ${fld('Certificado', `<input type="text" data-dx="${i}:certificado" value="${esc(p.certificado)}">`)}
+          ${fld('Asunto', `<input type="text" data-dx="${i}:asunto" value="${esc(p.asunto)}">`)}
+          ${fld('Detalle', `<textarea data-dx="${i}:descripcion" rows="2">${esc(p.descripcion)}</textarea>`, 'full')}
+        </div>
+        <div class="faint" style="font-size:.78rem;margin-top:6px">${ic('paperclip')} ${p.refs.map(r => esc(docs.find(d => d.ref === r)?.name || r)).join(', ')}</div></section>`).join('')}</div></div>`
+    : !forms.length ? `<p class="muted" style="font-size:.88rem">No encontré un trámite claro en estos documentos. Puedes crearlo a mano desde la Bandeja con “Crear trámite”.</p>` : ''}
+    <datalist id="dl-personas">${personasIndex().filter(p => p.rol !== 'Cliente').slice(0, 400).map(p => `<option value="${esc(p.nombre)}">`).join('')}</datalist>
+  </div>
+  <div class="drawer-f"><span class="spacer"></span>${props.length ? `<button class="btn primary" type="button" data-act="dx-go" ${n ? '' : 'disabled'}>${ic('check')}${n === 1 ? 'Guardar 1 trámite' : `Guardar ${n} trámites`}</button>` : ''}</div>`;
+}
+function dxRedraw() { const d = drawerEl(); if (!d || !DX) return; const sc = $('.drawer-b', d).scrollTop; d.innerHTML = docsLeidosHTML(); $('.drawer-b', d).scrollTop = sc; }
+
+document.addEventListener('input', e => {
+  const k = e.target.dataset?.dx; if (!k || !DX) return;
+  const [i, f] = k.split(':'); const p = DX.props[+i];
+  p[f] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+});
+document.addEventListener('change', e => {
+  const k = e.target.dataset?.dx; if (!k || !DX) return;
+  const [i, f] = k.split(':'); const p = DX.props[+i];
+  p[f] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  if (f === 'clienteId') { p.clienteTxt = ''; const ps = polizasActivas(p.clienteId); p.polizaId = ps.length === 1 ? ps[0].id : ''; }
+  if (f === 'tipo' && TIPOS_DOC.find(t => t.tipo === p.tipo)) { /* el asunto se deja como lo escribieron */ }
+  if (['crear', 'clienteId', 'tramiteId'].includes(f)) dxRedraw();
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act="dx-go"], [data-act="dx-reclamos"], [data-act="dx-nuevo"], [data-act="tramite-leer"]'); if (!b) return;
+  if (b.dataset.act === 'tramite-leer') return leerDocsTramite(b);
+  if (!DX) return;
+  if (b.dataset.act === 'dx-nuevo') { DX.props[+b.dataset.i].tramiteId = ''; return dxRedraw(); }
+  if (b.dataset.act === 'dx-reclamos') {
+    const { mail: m, forms } = DX; DX = null;
+    return openVariosDesde({ mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: m ? aseguradoraDeCorreo(m.from) : '', titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`, rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m?.attachments || [] });
+  }
+  const malos = DX.props.filter(p => p.crear && p.kind === 'tramite' && !p.clienteId && !p.clienteTxt);
+  if (malos.length) return toast('Elige el cliente de cada trámite', 'err');
+  b.disabled = true;
+  try {
+    const m = DX.mail;
+    const hechos = await guardarPropuestas(DX.props, { mail: m, docBy: m ? docDeCorreo(m) : DX.docBy });
+    if (m && hechos.length) await markMail(m.id, `${hechos.length === 1 ? 'Trámite' : 'Trámites'} ${hechos.map(h => h.codigo).join(', ')} (de los adjuntos)`, hechos[0].id);
+    DX = null; closeDrawer(); render(false);
+    toast(hechos.length ? `${hechos.length} ${hechos.length === 1 ? 'trámite guardado' : 'trámites guardados'}: ${hechos.map(h => h.codigo).join(', ')}` : 'No había nada nuevo que guardar');
+  } catch (err) { b.disabled = false; toast('No se terminó: ' + err.message, 'err'); }
+});
+
+/* En un trámite abierto: leer sus documentos y llenar lo que falte */
+async function leerDocsTramite(btn) {
+  const t = cur?.row; if (!t) return;
+  const docs = (t.docs || []).filter(d => d.id && !String(d.id).startsWith('demo-') && !d.demo);
+  if (!docs.length) return toast(S.mode === 'demo' ? 'En la demo los documentos no tienen contenido. En la app real, Google los lee.' : 'Este trámite no tiene documentos guardados en Drive', 'err');
+  btn.disabled = true; toast(`Leyendo ${docs.length} documento(s)…`);
+  let textos;
+  try { textos = (await api('api/leer', { json: { fileIds: docs.slice(0, 8).map(d => d.id) } })).textos || []; }
+  catch (e) { btn.disabled = false; return toast('No se pudo leer: ' + e.message, 'err'); }
+  btn.disabled = false;
+  const leidos = textos.map(x => ({ ...x, name: docs.find(d => d.id === x.ref)?.name, ...analizarDoc(x.texto, docs.find(d => d.id === x.ref)?.name) }));
+  const f = $('#frm'); if (!f) return;
+  const puso = [];
+  const llenar = (name, v, label) => { if (v && f[name] && !String(f[name].value).trim()) { f[name].value = v; puso.push(label); } };
+  for (const d of leidos) {
+    const fo = d.forms[0];
+    if (fo) { llenar('asegurado', fo.afiliado, 'asegurado'); llenar('certificado', fo.certificado, 'certificado'); llenar('paciente', fo.paciente && parecido(fo.paciente, fo.afiliado) < 0.8 ? fo.paciente : '', 'paciente'); llenar('monto', fo.total, 'monto'); llenar('descripcion', fo.notas, 'detalle'); }
+    llenar('asegurado', d.campos.nombre, 'asegurado'); llenar('certificado', d.campos.certificado, 'certificado');
+    if (t.tipo === 'Reclamo') llenar('monto', d.campos.monto, 'monto');
+    const p = polizaPorNumero(d.campos.poliza || fo?.poliza);
+    if (p && !f.polizaId.value && f.clienteId.value === p.clienteId) { f.polizaId.value = p.id; puso.push('póliza'); }
+  }
+  const resumen = leidos.map(d => `${d.name}: ${d.tipo.n}`).join(' · ');
+  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'nota', texto: `Documentos leídos. ${resumen}` }];
+  toast(puso.length ? `Llené: ${[...new Set(puso)].join(', ')}. Revisa y pulsa Guardar.` : `Leídos: ${resumen}. No había casillas vacías que llenar.`);
 }
 
 function openVariosDesde(o) {
@@ -2877,12 +3153,26 @@ function clienteDeRemitente(m, k) {
 }
 
 const esPdf = a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name || '');
-async function textosPdf(m) {
-  const pdfs = (m.attachments || []).filter(esPdf);
-  if (!pdfs.length) return [];
-  if (S.mode === 'demo') return pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
-  return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || [];
+async function textosAdj(m, soloPdf = false) {
+  const lista = (m.attachments || []).filter(soloPdf ? esPdf : leible).slice(0, 8);
+  if (!lista.length) return [];
+  if (S.mode === 'demo') return lista.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
+  return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: lista.map(a => a.id) } } })).textos || [];
 }
+const textosPdf = m => textosAdj(m, true);
+// Copia a Drive un adjunto cuando hace falta (en la carpeta del cliente); se recuerda para no copiarlo dos veces
+function docDeCorreo(m) {
+  const cache = {};
+  return async (ref, cid) => {
+    const key = (cid || '') + '|' + ref;
+    if (cache[key]) return cache[key];
+    const a = (m.attachments || []).find(x => x.id === ref); if (!a) return null;
+    if (S.mode === 'demo') return (cache[key] = { id: 'demo-' + ref, name: a.name, size: a.size });
+    const d = await api('api/gmail', { json: { id: m.id, cuenta: m.cuenta, attachments: [ref], folder: clienteNombre(cid) || 'Sin cliente' } }).catch(() => null);
+    return (cache[key] = d?.docs?.[0] || null);
+  };
+}
+
 // El monto a pagar en una carta de liquidación
 async function montoDeAdjuntos(m) {
   const textos = await textosPdf(m);
@@ -2905,34 +3195,39 @@ const responsableDe = m => { const c = (m.cuentas || [m.cuenta]).find(x => S.use
 /* Correo nuevo de un remitente automático → trámite(s) */
 async function crearAuto(m, k) {
   const tipo = tipoDeCorreo(m);
-  if (!tipo) return null;
   const clienteId = clienteDeRemitente(m, k);
   const quien = m.fromName || m.from;
   const fecha = (m.fecha || nowISO()).slice(0, 10);
-  const forms = tipo === 'Reclamo' ? (await textosPdf(m).catch(() => [])).flatMap(x => leerFormularios(x.texto).map(f => ({ f, ref: x.ref }))) : [];
-  // Sin cliente reconocido solo se sigue si el formulario dice quién es el contratante (se crea al guardar)
-  if (!clienteId && !forms.some(x => x.f.contratante)) return null;
-  const carpeta = clienteId ? clienteNombre(clienteId) : shortName(nombrePropio(forms.find(x => x.f.contratante).f.contratante));
-  const docs = (m.attachments || []).length ? await importAttachments(m, carpeta).catch(() => []) : [];
+  // Se leen todos los adjuntos: formularios de reclamo, inclusiones, exclusiones, beneficiarios…
+  const leidos = (m.attachments || []).some(leible) ? (await textosAdj(m).catch(() => [])).map(x => ({ ...x, ...analizarDoc(x.texto, x.name) })) : [];
+  const forms = leidos.flatMap(d => d.forms.map(f => ({ f, ref: d.ref })));
+  const props = propuestasDeDocs(leidos, { clienteId, polizaId: k.polizaId }).filter(p => p.kind === 'tramite' && (p.clienteId || p.clienteTxt));
+  if (!tipo && !forms.length && !props.length) return null;
+  if (!clienteId && !forms.some(x => x.f.contratante) && !props.length) return null;
+  const docBy = docDeCorreo(m);
   const hechos = [];
-  if (forms.length) {
-    for (const x of forms) {
-      const st = filaDeFormulario(x.f, null);
-      if (st.tramiteId) continue; // ese reclamo ya estaba registrado
-      if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
-      if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombrePropio(st.clienteTxt).replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.');
-      const asegF = poliza(st.polizaId)?.aseguradora || aseguradoraEnTexto(x.f.texto) || '';
-      await asegurarEntidades(st, asegF);
-      const suyos = docs.filter(d => d.partId === x.ref || d.id === 'demo-' + x.ref);
-      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || asegF, origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
-      nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
-      await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
-      hechos.push(nt);
-    }
-    if (!hechos.length) { await markMail(m.id, 'Automático · los reclamos del PDF ya estaban registrados', '', 'auto'); return []; }
-  } else {
+  for (const x of forms) {
+    const st = filaDeFormulario(x.f, null);
+    if (st.tramiteId) continue; // ese reclamo ya estaba registrado
+    if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
+    if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombreEmpresa(st.clienteTxt);
+    const asegF = poliza(st.polizaId)?.aseguradora || aseguradoraEnTexto(x.f.texto) || '';
+    await asegurarEntidades(st, asegF);
+    // Su PDF y los de apoyo (facturas sueltas, recetas)
+    const refs = [x.ref, ...leidos.filter(d => d.tipo.apoyo).map(d => d.ref)];
+    const docs = (await Promise.all([...new Set(refs)].map(r => docBy(r, st.clienteId)))).filter(Boolean);
+    const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs, aseguradora: poliza(st.polizaId)?.aseguradora || asegF, origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
+    nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
+    await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
+    hechos.push(nt);
+  }
+  if (props.length) hechos.push(...await guardarPropuestas(props, { mail: m, auto: true, docBy }));
+  if (!hechos.length && (forms.length || props.length)) { await markMail(m.id, 'Automático · lo de los adjuntos ya estaba registrado', '', 'auto'); return []; }
+  if (!hechos.length) {
+    if (!tipo || !clienteId) return null;
     const ps = DB.polizas.filter(p => p.clienteId === clienteId && !p.cancelada);
     const pid = k.polizaId || (ps.length === 1 ? ps[0].id : '');
+    const docs = (await Promise.all((m.attachments || []).map(a => docBy(a.id, clienteId)))).filter(Boolean);
     const t = {
       id: '', codigo: nextCodigo(), tipo, clienteId, polizaId: pid, aseguradora: poliza(pid)?.aseguradora || k.aseguradora || '', asunto: m.subject || tipo,
       descripcion: resumenCuerpo(m, 500), canal: CANALES[0], etapa: 'recibido', numeroReclamo: '', monto: tipo === 'Reclamo' && k.monto ? k.monto : '',

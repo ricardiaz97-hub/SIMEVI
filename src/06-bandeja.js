@@ -141,7 +141,7 @@ VIEWS.bandeja = () => {
     let acts = '';
     const x = !done && !k.conversacion ? extraer(m) : null;
     const varios = x && x.rows.length > 1;
-    const pdfs = !done && !k.estado && (m.attachments || []).some(esPdf);
+    const pdfs = !done && !k.estado && (m.attachments || []).some(leible);
     const auto = coincide(m.from, autoRemitentes());
     let pill;
     if (done) {
@@ -168,7 +168,7 @@ VIEWS.bandeja = () => {
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
       pill = `<span class="pill">Conversación</span>`;
     } else {
-      if (pdfs) acts += btn('mail-leer', m.id, 'Leer reclamos del PDF', 'primary', 'sparkle');
+      if (pdfs) acts += btn('mail-leer', m.id, 'Leer adjuntos', 'primary', 'sparkle');
       if (varios) {
         acts += btn('mail-varios', m.id, `Revisar los ${x.rows.length}`, pdfs ? '' : 'primary', 'list-bullets');
       } else {
