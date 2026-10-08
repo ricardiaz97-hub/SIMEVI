@@ -318,9 +318,11 @@ VIEWS.buscar = () => {
   const po = DB.polizas.filter(p => has([p.numero, p.aseguradora, clienteNombre(p.clienteId), ...(p.asegurados || []).map(a => a.nombre + ' ' + a.documento)].join(' ')));
   const tr = DB.tramites.filter(t => has([t.codigo, t.asunto, t.numeroReclamo, clienteNombre(t.clienteId)].join(' ')));
   const pg = DB.pagos.filter(p => has([p.numero, p.folio, clienteNombre(p.clienteId)].join(' ')));
+  const pe = personasIndex().filter(p => has([p.nombre, p.certificado, p.documento].join(' ')));
   const block = (title, items, fn) => items.length ? `<div class="sec"><div class="label">${title} <span class="faint">${items.length}</span></div><div class="docs">${items.slice(0, 12).map(fn).join('')}</div></div>` : '';
-  const total = cl.length + po.length + tr.length + pg.length;
+  const total = cl.length + po.length + tr.length + pg.length + pe.length;
   return head('Buscar', `${total} ${total === 1 ? 'resultado' : 'resultados'} para “${esc(S.q)}”`) + (total ? `<div class="panel panel-b">
+    ${block('Personas', pe, p => `<button class="doc" type="button" data-act="open-persona" data-id="${esc(p.key)}">${ic('user')}<span>${esc(p.nombre)}</span><small>${esc(subPersona(p))}${p.reclamos.length ? ` · ${p.reclamos.length} reclamo${p.reclamos.length > 1 ? 's' : ''}` : ''}</small></button>`)}
     ${block('Trámites', tr, t => `<button class="doc" type="button" data-act="open-tramite" data-id="${t.id}">${ic('folder-open')}<span>${esc(t.codigo)} · ${esc(clienteNombre(t.clienteId))} · ${esc(t.asunto || t.tipo)}${t.numeroReclamo ? ' · ' + esc(t.numeroReclamo) : ''}</span>${etapaPill(t)}</button>`)}
     ${block('Clientes', cl, c => `<button class="doc" type="button" data-act="open-cliente" data-id="${c.id}">${ic(c.tipo === 'Empresa' ? 'buildings' : 'user')}<span>${esc(c.nombre)}</span><small>${esc(c.telefono || '')}</small></button>`)}
     ${block('Pólizas', po, p => `<button class="doc" type="button" data-act="open-poliza" data-id="${p.id}">${ic('shield-check')}<span>${esc(p.numero)} · ${esc(p.ramo)} · ${esc(clienteNombre(p.clienteId))}</span><span class="pill ${polizaEstado(p).cls}">${esc(polizaEstado(p).n)}</span></button>`)}

@@ -71,6 +71,7 @@ const ROUTES = [
   { k: 'pagos', n: 'Pagos', i: 'money-wavy' },
   { k: 'polizas', n: 'Pólizas', i: 'shield-check' },
   { k: 'clientes', n: 'Clientes', i: 'users', desk: true },
+  { k: 'personas', n: 'Personas', i: 'identification-card', desk: true },
   { k: 'bandeja', n: 'Bandeja', i: 'tray', desk: true, sep: true },
   { k: 'bitacora', n: 'Bitácora', i: 'clock-counter-clockwise', desk: true },
   { k: 'ajustes', n: 'Ajustes', i: 'gear-six', desk: true }

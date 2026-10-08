@@ -453,6 +453,7 @@ const ROUTES = [
   { k: 'pagos', n: 'Pagos', i: 'money-wavy' },
   { k: 'polizas', n: 'Pólizas', i: 'shield-check' },
   { k: 'clientes', n: 'Clientes', i: 'users', desk: true },
+  { k: 'personas', n: 'Personas', i: 'identification-card', desk: true },
   { k: 'bandeja', n: 'Bandeja', i: 'tray', desk: true, sep: true },
   { k: 'bitacora', n: 'Bitácora', i: 'clock-counter-clockwise', desk: true },
   { k: 'ajustes', n: 'Ajustes', i: 'gear-six', desk: true }
@@ -771,9 +772,9 @@ function tramiteHTML(t, isNew) {
           ${fld('Póliza', `<select name="polizaId">${polizaOpts(t.clienteId, t.polizaId)}</select>`)}
           ${fld('Tipo', `<select name="tipo">${opt(TIPOS, t.tipo)}</select>`)}
           ${fld('Aseguradora', inp('aseguradora', t.aseguradora, 'text', 'list="dl-aseg"'))}
-          ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente"'))}
+          ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente" list="dl-personas"'))}
           ${fld('N.º de certificado', inp('certificado', t.certificado))}
-          ${fld('Paciente (si es dependiente)', inp('paciente', t.paciente))}
+          ${fld('Paciente (si es dependiente)', inp('paciente', t.paciente, 'text', 'list="dl-personas"'))}
           ${fld('Parentesco', `<select name="parentesco">${opt(PARENTESCOS, t.parentesco, 'Sin parentesco')}</select>`)}
           ${fld('Asunto', inp('asunto', t.asunto, 'text', 'placeholder="Ej.: Reembolso de medicamentos de octubre"'), 'full')}
           ${fld('Detalle', `<textarea name="descripcion" placeholder="Lo que pidió el cliente">${esc(t.descripcion)}</textarea>`, 'full')}
@@ -805,7 +806,7 @@ function tramiteHTML(t, isNew) {
       <div class="note-add"><label class="sr" for="note">Nota</label><input type="text" id="note" placeholder="Agregar nota: llamada, visita, lo que dijo la aseguradora…"><button class="btn" type="button" data-act="add-note">Anotar</button></div>
     </div>
     ${authors(t)}` : ''}
-    ${aseguradoraList()}
+    ${aseguradoraList()}<datalist id="dl-personas">${personasIndex().filter(p => p.rol !== 'Cliente').slice(0, 400).map(p => `<option value="${esc(p.nombre)}">${esc(subPersona(p))}</option>`).join('')}</datalist>
   </div>
   <div class="drawer-f">
     ${!isNew ? `<button class="btn ghost icon" type="button" data-act="tramite-more" aria-label="Más acciones">${ic('dots-three')}</button>` : ''}
@@ -1150,6 +1151,7 @@ function syncRow(st) {
   set('[data-cb=poliza] input', p ? p.numero : st.polizaTxt);
   set('[data-cb=asegurado] input', st.asegurado);
   set('[data-cb=cert] input', st.certificado);
+  set('[data-cb=paciente] input', st.paciente);
   ['paciente', 'parentesco', 'monto', 'numero', 'notas', 'cheque'].forEach(k => set(`[data-f=${k}]`, st[k]));
   const h = hintFila(st), box = $('.row-hint', row);
   if (box) { box.innerHTML = h.html; box.dataset.estado = h.estado; }
@@ -1177,7 +1179,7 @@ function campos(st, pre) {
     poliza: `<div class="rx-cell" data-l="Póliza">${comboHTML('poliza', `${pre}-poliza`, 'Póliza', p ? p.numero : st.polizaTxt, 'Póliza')}</div>`,
     asegurado: `<div class="rx-cell" data-l="Asegurado">${comboHTML('asegurado', `${pre}-asegurado`, 'Asegurado o empleado', st.asegurado, p?.modalidad === 'Individual' ? 'El mismo cliente' : 'Empleado o asegurado')}</div>`,
     cert: `<div class="rx-cell" data-l="Cert.">${comboHTML('cert', `${pre}-cert`, 'Número de certificado', st.certificado, 'Cert.')}</div>`,
-    paciente: `<div class="rx-cell" data-l="Paciente">${inp2('paciente', 'Paciente si es dependiente')}</div>`,
+    paciente: `<div class="rx-cell" data-l="Paciente">${comboHTML('paciente', `${pre}-paciente`, 'Paciente si es dependiente', st.paciente, 'Paciente si es dependiente')}</div>`,
     parentesco: `<div class="rx-cell" data-l="Parentesco"><label class="sr" for="${pre}-parentesco">Parentesco</label><select id="${pre}-parentesco" data-f="parentesco">${opt(PARENTESCOS, st.parentesco, 'Parentesco')}</select></div>`,
     monto: `<div class="rx-cell" data-l="Monto">${inp2('monto', 'Monto US$', 'inputmode="decimal"')}</div>`,
     numero: `<div class="rx-cell" data-l="N.º de reclamo">${inp2('numero', 'N.º de reclamo (opcional)')}</div>`,
@@ -1217,8 +1219,15 @@ async function asegurarEntidades(st, aseguradora = '') {
   if (p && p.modalidad === 'Colectiva' && st.asegurado && norm(st.asegurado) !== norm(clienteNombre(st.clienteId))) {
     const lista = p.asegurados || [];
     const a = lista.find(a => norm(a.nombre) === norm(st.asegurado) || (st.certificado && a.certificado && String(a.certificado) === String(st.certificado)));
-    if (!a) { p.asegurados = [...lista, { nombre: st.asegurado, documento: '', certificado: st.certificado || '', plan: '' }]; await save('polizas', p, `${p.numero}: asegurado ${st.asegurado} agregado`); }
-    else if (st.certificado && !a.certificado) { a.certificado = st.certificado; await save('polizas', p, `${p.numero}: certificado ${st.certificado} de ${a.nombre}`); }
+    // El paciente (si es dependiente) queda guardado con su titular, para la próxima vez
+    const dep = st.paciente && norm(st.paciente) !== norm(st.asegurado) ? { nombre: st.paciente, parentesco: st.parentesco || '' } : null;
+    if (!a) { p.asegurados = [...lista, { nombre: st.asegurado, documento: '', certificado: st.certificado || '', plan: '', dependientes: dep ? [dep] : [] }]; await save('polizas', p, `${p.numero}: asegurado ${st.asegurado} agregado${dep ? ` (con ${dep.nombre})` : ''}`); }
+    else {
+      const cambios = [];
+      if (st.certificado && !a.certificado) { a.certificado = st.certificado; cambios.push(`certificado ${st.certificado}`); }
+      if (dep && !(a.dependientes || []).some(d => norm(d.nombre) === norm(dep.nombre))) { a.dependientes = [...(a.dependientes || []), dep]; cambios.push(`dependiente ${dep.nombre}${dep.parentesco ? ` (${dep.parentesco.toLowerCase()})` : ''}`); }
+      if (cambios.length) await save('polizas', p, `${p.numero}: ${cambios.join(', ')} de ${a.nombre}`);
+    }
   } else if (p && !p.aseguradora && aseguradora) await save('polizas', p, `${p.numero}: aseguradora ${aseguradora}`);
   if (p?.modalidad === 'Individual' && !st.asegurado) st.asegurado = clienteNombre(st.clienteId);
 }
@@ -1302,7 +1311,7 @@ function cbOpen(input) {
   const v = input.value.trim(); const st = cbState(box);
   box._opts = CB[name](v, st); box._active = box._opts.length && v ? 0 : -1;
   if (!box._opts.length) {
-    const nuevo = { cliente: `Cliente nuevo: se creará “${esc(v)}” al guardar`, poliza: `Póliza nueva: se creará “${esc(v)}” al guardar`, asegurado: `Asegurado nuevo: se agregará a la póliza al guardar`, cert: 'Certificado nuevo' }[name];
+    const nuevo = { cliente: `Cliente nuevo: se creará “${esc(v)}” al guardar`, poliza: `Póliza nueva: se creará “${esc(v)}” al guardar`, asegurado: `Asegurado nuevo: se agregará a la póliza al guardar`, cert: 'Certificado nuevo', paciente: 'Dependiente nuevo: se guarda al guardar el reclamo' }[name];
     list.innerHTML = `<li class="cb-empty">${v ? nuevo : name === 'cert' ? (st.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
   } else list.innerHTML = box._opts.map((o, i) => `<li role="option" id="${input.id}-o${i}" data-i="${i}" aria-selected="${i === box._active}"><span class="cb-l">${mark(o.label, v)}</span><span class="cb-s">${mark(o.sub, v)}</span></li>`).join('');
   list.hidden = false; input.setAttribute('aria-expanded', 'true');
@@ -1351,6 +1360,7 @@ document.addEventListener('input', e => {
     if (name === 'poliza') { st.polizaTxt = v; const p = poliza(st.polizaId); if (p && norm(v) !== norm(p.numero)) st.polizaId = ''; }
     if (name === 'asegurado') { st.asegurado = v; if (norm(v) !== norm(st.picked)) st.picked = ''; }
     if (name === 'cert') st.certificado = v;
+    if (name === 'paciente') st.paciente = v;
     if (st === RX) rxKeep();
     cbOpen(i);
     const h = $('.row-hint', rowEl(st)); if (h) { const x = hintFila(st); h.innerHTML = x.html; h.dataset.estado = x.estado; }
@@ -1825,6 +1835,160 @@ async function renderPortal(tok) {
   </div>`;
 }
 
+/* ---------- Personas: asegurados, empleados y dependientes ----------
+   No hay que darlas de alta: se arma con lo que ya está guardado (los asegurados de las
+   pólizas colectivas, sus dependientes, los clientes que son personas y cada reclamo).
+   Cada persona nueva que entra en un reclamo queda aquí sola, y al escribir su nombre en
+   Reclamos se llenan empresa, póliza, certificado, titular y parentesco. */
+
+const clavePersona = (nombre, clienteId) => `${norm(nombre).replace(/[^a-z0-9ñ ]/g, ' ').replace(/\s+/g, ' ').trim()}|${clienteId || ''}`;
+
+function personasIndex() {
+  const map = new Map();
+  const add = o => {
+    const k = clavePersona(o.nombre, o.clienteId);
+    const prev = map.get(k);
+    if (prev) {
+      for (const f of ['polizaId', 'certificado', 'titular', 'parentesco', 'documento']) if (!prev[f] && o[f]) prev[f] = o[f];
+      if (o.rol === 'Asegurado' && prev.rol === 'Dependiente') { prev.rol = 'Asegurado'; prev.titular = ''; prev.parentesco = ''; }
+      return prev;
+    }
+    const p = { key: k, reclamos: [], titular: '', parentesco: '', polizaId: '', certificado: '', documento: '', ...o };
+    map.set(k, p);
+    return p;
+  };
+  DB.clientes.filter(c => c.tipo === 'Persona').forEach(c => add({ nombre: c.nombre, rol: 'Cliente', clienteId: c.id, documento: c.documento || '' }));
+  DB.polizas.filter(p => !p.cancelada && p.modalidad === 'Colectiva').forEach(p => (p.asegurados || []).forEach(a => {
+    if (!a.nombre || /planilla|anexo|·/i.test(a.nombre)) return;
+    add({ nombre: a.nombre, rol: 'Asegurado', clienteId: p.clienteId, polizaId: p.id, certificado: a.certificado || '', documento: a.documento || '' });
+    (a.dependientes || []).forEach(d => add({ nombre: d.nombre, rol: 'Dependiente', parentesco: d.parentesco || '', titular: a.nombre, clienteId: p.clienteId, polizaId: p.id, certificado: a.certificado || '' }));
+  }));
+  DB.tramites.forEach(t => {
+    const cli = clienteNombre(t.clienteId);
+    const esTit = t.asegurado && norm(t.asegurado) !== norm(cli);
+    const tit = esTit ? add({ nombre: t.asegurado, rol: 'Asegurado', clienteId: t.clienteId, polizaId: t.polizaId, certificado: t.certificado || '' }) : map.get(clavePersona(cli, t.clienteId));
+    if (t.paciente && norm(t.paciente) !== norm(t.asegurado || cli)) {
+      add({ nombre: t.paciente, rol: 'Dependiente', parentesco: t.parentesco || '', titular: t.asegurado || cli, clienteId: t.clienteId, polizaId: t.polizaId, certificado: t.certificado || '' }).reclamos.push(t);
+    } else if (tit) tit.reclamos.push(t);
+  });
+  for (const p of map.values()) {
+    p.reclamos.sort((a, b) => String(b.fechaSolicitud || '').localeCompare(String(a.fechaSolicitud || '')));
+    p.ultimo = p.reclamos[0]?.fechaSolicitud || '';
+    p.abiertos = p.reclamos.filter(tramiteAbierto).length;
+  }
+  return [...map.values()];
+}
+const dependientesDe = (lista, p) => lista.filter(x => x.rol === 'Dependiente' && x.clienteId === p.clienteId && norm(x.titular) === norm(p.nombre));
+const subPersona = p => [p.rol === 'Dependiente' ? `${p.parentesco || 'Dependiente'} de ${shortName(p.titular)}` : p.rol === 'Cliente' ? 'Cliente' : 'Asegurado', p.rol !== 'Cliente' ? shortName(clienteNombre(p.clienteId)) : '', poliza(p.polizaId)?.numero || '', p.certificado ? 'cert. ' + p.certificado : ''].filter(Boolean).join(' · ');
+
+VIEWS.personas = () => {
+  const f = S.f, q = S.q;
+  const todas = personasIndex();
+  const list = todas.filter(p => (!f.perRol || p.rol === f.perRol) && (!q || score(`${p.nombre} ${p.titular} ${clienteNombre(p.clienteId)} ${p.certificado} ${p.documento} ${poliza(p.polizaId)?.numero || ''}`, q)))
+    .sort((a, b) => String(b.ultimo).localeCompare(String(a.ultimo)) || a.nombre.localeCompare(b.nombre));
+  const n = r => todas.filter(p => p.rol === r).length;
+  const seg = [['', `Todas · ${todas.length}`], ['Asegurado', `Asegurados · ${n('Asegurado')}`], ['Dependiente', `Dependientes · ${n('Dependiente')}`], ['Cliente', `Clientes · ${n('Cliente')}`]];
+  return head('Personas', 'Asegurados, empleados y dependientes. Cada persona nueva que entra en un reclamo se guarda sola, y al escribir su nombre en Reclamos se llena lo demás.') + `
+  <div class="toolbar">
+    <label class="search"><span class="sr">Buscar personas</span>${ic('magnifying-glass')}<input type="search" id="persearch" data-bind="q" placeholder="Nombre, empresa, certificado…" value="${esc(q)}"></label>
+    <div class="seg" role="group" aria-label="Tipo">${seg.map(([k, t]) => `<button type="button" data-act="filter" data-k="perRol" data-v="${k}" aria-pressed="${(f.perRol || '') === k}">${t}</button>`).join('')}</div>
+  </div>
+  ${list.length ? `<div class="panel"><div class="table-wrap"><table class="resp"><thead><tr><th>Nombre</th><th>Empresa o cliente</th><th>Póliza</th><th class="r">Reclamos</th><th>Último</th></tr></thead><tbody>
+    ${list.slice(0, 300).map(p => `<tr data-act="open-persona" data-id="${esc(p.key)}"><td data-l="Nombre"><b style="font-weight:600">${q ? mark(p.nombre, q) : esc(p.nombre)}</b><span class="sub">${p.rol === 'Dependiente' ? `${esc(p.parentesco || 'Dependiente')} de ${esc(shortName(p.titular))}` : esc(p.rol)}</span></td>
+      <td data-l="Empresa">${esc(shortName(clienteNombre(p.clienteId)))}</td>
+      <td data-l="Póliza" class="tnum">${esc(poliza(p.polizaId)?.numero || '')}${p.certificado ? `<span class="sub">cert. ${esc(p.certificado)}</span>` : ''}</td>
+      <td data-l="Reclamos" class="r tnum">${p.reclamos.length || ''}${p.abiertos ? ` <span class="pill gold">${p.abiertos} abierto${p.abiertos > 1 ? 's' : ''}</span>` : ''}</td>
+      <td data-l="Último" class="tnum">${p.ultimo ? fmtShort(p.ultimo) : ''}</td></tr>`).join('')}
+  </tbody></table></div></div>` : emptyState('users-three', q ? 'Nadie con ese nombre' : 'Aún no hay personas', 'Se agregan solas al guardar reclamos, o al cargar los asegurados de una póliza colectiva.')}`;
+};
+
+function openPersona(key) {
+  const todas = personasIndex();
+  const p = todas.find(x => x.key === key); if (!p) return;
+  const deps = dependientesDe(todas, p);
+  const pol = poliza(p.polizaId);
+  openDrawer(`
+  <div class="drawer-h"><div class="t"><span class="label">${esc(p.rol)}</span><h2>${esc(p.nombre)}</h2><div class="muted" style="font-size:.86rem;margin-top:4px">${esc(subPersona(p))}</div></div>
+    <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="drawer-b">
+    <div class="kv">
+      <div><dt>Empresa o cliente</dt><dd><button class="linkish" type="button" data-act="open-cliente" data-id="${esc(p.clienteId)}">${esc(clienteNombre(p.clienteId))}</button></dd></div>
+      <div><dt>Póliza</dt><dd>${pol ? `<button class="linkish" type="button" data-act="open-poliza" data-id="${pol.id}">${esc(pol.numero)} · ${esc(pol.ramo)} · ${esc(pol.aseguradora)}</button>` : '-'}</dd></div>
+      ${p.certificado ? `<div><dt>Certificado</dt><dd class="tnum">${esc(p.certificado)}</dd></div>` : ''}
+      ${p.rol === 'Dependiente' ? `<div><dt>Titular</dt><dd>${esc(p.titular)}${p.parentesco ? ` (${esc(p.parentesco.toLowerCase())})` : ''}</dd></div>` : ''}
+    </div>
+    ${deps.length ? `<div class="sec"><div class="label">Dependientes <span class="faint">${deps.length}</span></div><div class="docs">${deps.map(d => `<button class="doc" type="button" data-act="open-persona" data-id="${esc(d.key)}">${ic('user')}<span>${esc(d.nombre)}</span><small>${esc(d.parentesco || '')}${d.reclamos.length ? ` · ${d.reclamos.length} reclamo${d.reclamos.length > 1 ? 's' : ''}` : ''}</small></button>`).join('')}</div></div>` : ''}
+    <div class="sec"><div class="label">Reclamos y trámites <span class="faint">${p.reclamos.length}</span></div>
+      ${p.reclamos.length ? `<div class="docs">${p.reclamos.map(t => `<button class="doc" type="button" data-act="open-tramite" data-id="${t.id}">${ic('folder-open')}<span>${esc(t.codigo)} · ${fmtShort(t.fechaSolicitud)}${t.numeroReclamo ? ' · ' + esc(t.numeroReclamo) : ''}${+t.monto ? ' · ' + fmtMoney(t.monto) : ''}</span>${etapaPill(t)}</button>`).join('')}</div>` : '<p class="muted" style="margin:0;font-size:.86rem">Todavía sin reclamos.</p>'}
+    </div>
+  </div>
+  <div class="drawer-f"><span class="spacer"></span><button class="btn primary" type="button" data-act="persona-reclamo" data-id="${esc(p.key)}">${ic('plus')}Nuevo reclamo para ${esc(p.nombre.split(' ')[0])}</button></div>`);
+}
+
+// Una fila de Reclamos ya llena con los datos de la persona
+function filaDePersona(p) {
+  const dep = p.rol === 'Dependiente';
+  return filaNueva({
+    clienteId: p.clienteId, clienteTxt: clienteNombre(p.clienteId), polizaId: p.polizaId || (polizasActivas(p.clienteId).length === 1 ? polizasActivas(p.clienteId)[0].id : ''),
+    asegurado: dep ? p.titular : p.rol === 'Cliente' ? clienteNombre(p.clienteId) : p.nombre, picked: dep ? p.titular : p.nombre, certificado: p.certificado || '',
+    paciente: dep ? p.nombre : '', parentesco: dep ? p.parentesco : ''
+  });
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act="open-persona"], [data-act="persona-reclamo"]'); if (!b) return;
+  if (b.dataset.act === 'open-persona') return openPersona(b.dataset.id);
+  const p = personasIndex().find(x => x.key === b.dataset.id); if (!p) return;
+  RX = filaDePersona(p); rxKeep();
+  closeDrawer();
+  // closeDrawer regresa en el historial; se navega cuando ya terminó
+  setTimeout(() => { go('reclamos'); setTimeout(() => { syncRow(RX); $('#rx-new [data-f=monto]')?.focus(); }, 80); }, 60);
+  toast(`Fila lista para ${p.nombre.split(' ')[0]}: escribe el monto y las notas`);
+});
+
+/* --- autocompletar en Reclamos ---
+   Asegurado: además de los asegurados de las pólizas, salen las personas de reclamos anteriores
+   y los dependientes (al elegir un dependiente se llenan titular, paciente y parentesco). */
+const opcPersona = p => ({
+  kind: p.rol === 'Dependiente' ? 'dep' : 'per', label: p.nombre, sub: subPersona(p),
+  find: `${p.nombre} ${p.certificado} ${p.documento} ${p.titular}`, clienteId: p.clienteId, polizaId: p.polizaId, certificado: p.certificado, titular: p.titular, parentesco: p.parentesco
+});
+const cbAseguradoBase = CB.asegurado;
+CB.asegurado = (q, st = RX) => {
+  const base = cbAseguradoBase(q, st);
+  const ya = new Set(base.map(o => clavePersona(o.label, o.clienteId)));
+  const p = poliza(st.polizaId);
+  const extra = personasIndex().filter(x => x.rol !== 'Cliente' && !ya.has(x.key) && (!st.clienteId || x.clienteId === st.clienteId) && (!p || !x.polizaId || x.polizaId === p.id)).map(opcPersona);
+  return q ? rank([...base, ...extra], q) : base.concat(extra).slice(0, 8);
+};
+CB.paciente = (q, st = RX) => {
+  const deps = personasIndex().filter(x => x.rol === 'Dependiente' && (!st.clienteId || x.clienteId === st.clienteId));
+  const suyos = st.asegurado ? deps.filter(d => norm(d.titular) === norm(st.asegurado)) : [];
+  const opts = (q ? deps : (suyos.length ? suyos : deps)).map(opcPersona).map(o => ({ ...o, bonus: suyos.some(s => s.nombre === o.label) ? 2 : 0 }));
+  return q ? rank(opts, q) : opts.slice(0, 8);
+};
+const pickBase = pick;
+pick = function (name, o, st = RX) {
+  if (name === 'asegurado' && (o.kind === 'dep' || o.kind === 'per')) {
+    if (st.clienteId !== o.clienteId) setCliente(st, o.clienteId);
+    if (o.polizaId) { st.polizaId = o.polizaId; st.polizaTxt = ''; }
+    if (o.kind === 'dep') { st.asegurado = o.titular; st.paciente = o.label; st.parentesco = o.parentesco || st.parentesco; }
+    else st.asegurado = o.label;
+    st.certificado = o.certificado || st.certificado; st.picked = st.asegurado;
+    if (st === RX) rxKeep();
+    return syncRow(st);
+  }
+  if (name === 'paciente') {
+    if (!st.clienteId && o.clienteId) setCliente(st, o.clienteId);
+    if (!st.polizaId && o.polizaId) st.polizaId = o.polizaId;
+    if (!st.asegurado && o.titular) { st.asegurado = o.titular; st.picked = o.titular; st.certificado = st.certificado || o.certificado; }
+    st.paciente = o.label; st.parentesco = o.parentesco || st.parentesco;
+    if (st === RX) rxKeep();
+    return syncRow(st);
+  }
+  return pickBase(name, o, st);
+};
+
 /* ---------- Bandeja de Gmail ---------- */
 const DOMINIOS = { sisa: 'SISA', asesuisa: 'ASESUISA', pacifico: 'Seguros del Pacífico', mapfre: 'MAPFRE La Centro Americana', fedecredito: 'Seguros Fedecrédito', palig: 'Pan-American Life', panamerican: 'Pan-American Life', segurosazul: 'Seguros Azul', azul: 'Seguros Azul', davivienda: 'Davivienda Seguros', assa: 'ASSA', futuro: 'Seguros Futuro', acsa: 'Aseguradora Agrícola Comercial', atlantida: 'Atlántida Vida', qualitas: 'Quálitas' };
 const DEFAULT_GMAIL_Q = 'newer_than:30d -category:promotions -category:social -category:updates';
@@ -2145,9 +2309,11 @@ VIEWS.buscar = () => {
   const po = DB.polizas.filter(p => has([p.numero, p.aseguradora, clienteNombre(p.clienteId), ...(p.asegurados || []).map(a => a.nombre + ' ' + a.documento)].join(' ')));
   const tr = DB.tramites.filter(t => has([t.codigo, t.asunto, t.numeroReclamo, clienteNombre(t.clienteId)].join(' ')));
   const pg = DB.pagos.filter(p => has([p.numero, p.folio, clienteNombre(p.clienteId)].join(' ')));
+  const pe = personasIndex().filter(p => has([p.nombre, p.certificado, p.documento].join(' ')));
   const block = (title, items, fn) => items.length ? `<div class="sec"><div class="label">${title} <span class="faint">${items.length}</span></div><div class="docs">${items.slice(0, 12).map(fn).join('')}</div></div>` : '';
-  const total = cl.length + po.length + tr.length + pg.length;
+  const total = cl.length + po.length + tr.length + pg.length + pe.length;
   return head('Buscar', `${total} ${total === 1 ? 'resultado' : 'resultados'} para “${esc(S.q)}”`) + (total ? `<div class="panel panel-b">
+    ${block('Personas', pe, p => `<button class="doc" type="button" data-act="open-persona" data-id="${esc(p.key)}">${ic('user')}<span>${esc(p.nombre)}</span><small>${esc(subPersona(p))}${p.reclamos.length ? ` · ${p.reclamos.length} reclamo${p.reclamos.length > 1 ? 's' : ''}` : ''}</small></button>`)}
     ${block('Trámites', tr, t => `<button class="doc" type="button" data-act="open-tramite" data-id="${t.id}">${ic('folder-open')}<span>${esc(t.codigo)} · ${esc(clienteNombre(t.clienteId))} · ${esc(t.asunto || t.tipo)}${t.numeroReclamo ? ' · ' + esc(t.numeroReclamo) : ''}</span>${etapaPill(t)}</button>`)}
     ${block('Clientes', cl, c => `<button class="doc" type="button" data-act="open-cliente" data-id="${c.id}">${ic(c.tipo === 'Empresa' ? 'buildings' : 'user')}<span>${esc(c.nombre)}</span><small>${esc(c.telefono || '')}</small></button>`)}
     ${block('Pólizas', po, p => `<button class="doc" type="button" data-act="open-poliza" data-id="${p.id}">${ic('shield-check')}<span>${esc(p.numero)} · ${esc(p.ramo)} · ${esc(clienteNombre(p.clienteId))}</span><span class="pill ${polizaEstado(p).cls}">${esc(polizaEstado(p).n)}</span></button>`)}

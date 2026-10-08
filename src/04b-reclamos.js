@@ -112,6 +112,7 @@ function syncRow(st) {
   set('[data-cb=poliza] input', p ? p.numero : st.polizaTxt);
   set('[data-cb=asegurado] input', st.asegurado);
   set('[data-cb=cert] input', st.certificado);
+  set('[data-cb=paciente] input', st.paciente);
   ['paciente', 'parentesco', 'monto', 'numero', 'notas', 'cheque'].forEach(k => set(`[data-f=${k}]`, st[k]));
   const h = hintFila(st), box = $('.row-hint', row);
   if (box) { box.innerHTML = h.html; box.dataset.estado = h.estado; }
@@ -139,7 +140,7 @@ function campos(st, pre) {
     poliza: `<div class="rx-cell" data-l="Póliza">${comboHTML('poliza', `${pre}-poliza`, 'Póliza', p ? p.numero : st.polizaTxt, 'Póliza')}</div>`,
     asegurado: `<div class="rx-cell" data-l="Asegurado">${comboHTML('asegurado', `${pre}-asegurado`, 'Asegurado o empleado', st.asegurado, p?.modalidad === 'Individual' ? 'El mismo cliente' : 'Empleado o asegurado')}</div>`,
     cert: `<div class="rx-cell" data-l="Cert.">${comboHTML('cert', `${pre}-cert`, 'Número de certificado', st.certificado, 'Cert.')}</div>`,
-    paciente: `<div class="rx-cell" data-l="Paciente">${inp2('paciente', 'Paciente si es dependiente')}</div>`,
+    paciente: `<div class="rx-cell" data-l="Paciente">${comboHTML('paciente', `${pre}-paciente`, 'Paciente si es dependiente', st.paciente, 'Paciente si es dependiente')}</div>`,
     parentesco: `<div class="rx-cell" data-l="Parentesco"><label class="sr" for="${pre}-parentesco">Parentesco</label><select id="${pre}-parentesco" data-f="parentesco">${opt(PARENTESCOS, st.parentesco, 'Parentesco')}</select></div>`,
     monto: `<div class="rx-cell" data-l="Monto">${inp2('monto', 'Monto US$', 'inputmode="decimal"')}</div>`,
     numero: `<div class="rx-cell" data-l="N.º de reclamo">${inp2('numero', 'N.º de reclamo (opcional)')}</div>`,
@@ -179,8 +180,15 @@ async function asegurarEntidades(st, aseguradora = '') {
   if (p && p.modalidad === 'Colectiva' && st.asegurado && norm(st.asegurado) !== norm(clienteNombre(st.clienteId))) {
     const lista = p.asegurados || [];
     const a = lista.find(a => norm(a.nombre) === norm(st.asegurado) || (st.certificado && a.certificado && String(a.certificado) === String(st.certificado)));
-    if (!a) { p.asegurados = [...lista, { nombre: st.asegurado, documento: '', certificado: st.certificado || '', plan: '' }]; await save('polizas', p, `${p.numero}: asegurado ${st.asegurado} agregado`); }
-    else if (st.certificado && !a.certificado) { a.certificado = st.certificado; await save('polizas', p, `${p.numero}: certificado ${st.certificado} de ${a.nombre}`); }
+    // El paciente (si es dependiente) queda guardado con su titular, para la próxima vez
+    const dep = st.paciente && norm(st.paciente) !== norm(st.asegurado) ? { nombre: st.paciente, parentesco: st.parentesco || '' } : null;
+    if (!a) { p.asegurados = [...lista, { nombre: st.asegurado, documento: '', certificado: st.certificado || '', plan: '', dependientes: dep ? [dep] : [] }]; await save('polizas', p, `${p.numero}: asegurado ${st.asegurado} agregado${dep ? ` (con ${dep.nombre})` : ''}`); }
+    else {
+      const cambios = [];
+      if (st.certificado && !a.certificado) { a.certificado = st.certificado; cambios.push(`certificado ${st.certificado}`); }
+      if (dep && !(a.dependientes || []).some(d => norm(d.nombre) === norm(dep.nombre))) { a.dependientes = [...(a.dependientes || []), dep]; cambios.push(`dependiente ${dep.nombre}${dep.parentesco ? ` (${dep.parentesco.toLowerCase()})` : ''}`); }
+      if (cambios.length) await save('polizas', p, `${p.numero}: ${cambios.join(', ')} de ${a.nombre}`);
+    }
   } else if (p && !p.aseguradora && aseguradora) await save('polizas', p, `${p.numero}: aseguradora ${aseguradora}`);
   if (p?.modalidad === 'Individual' && !st.asegurado) st.asegurado = clienteNombre(st.clienteId);
 }
@@ -264,7 +272,7 @@ function cbOpen(input) {
   const v = input.value.trim(); const st = cbState(box);
   box._opts = CB[name](v, st); box._active = box._opts.length && v ? 0 : -1;
   if (!box._opts.length) {
-    const nuevo = { cliente: `Cliente nuevo: se creará “${esc(v)}” al guardar`, poliza: `Póliza nueva: se creará “${esc(v)}” al guardar`, asegurado: `Asegurado nuevo: se agregará a la póliza al guardar`, cert: 'Certificado nuevo' }[name];
+    const nuevo = { cliente: `Cliente nuevo: se creará “${esc(v)}” al guardar`, poliza: `Póliza nueva: se creará “${esc(v)}” al guardar`, asegurado: `Asegurado nuevo: se agregará a la póliza al guardar`, cert: 'Certificado nuevo', paciente: 'Dependiente nuevo: se guarda al guardar el reclamo' }[name];
     list.innerHTML = `<li class="cb-empty">${v ? nuevo : name === 'cert' ? (st.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
   } else list.innerHTML = box._opts.map((o, i) => `<li role="option" id="${input.id}-o${i}" data-i="${i}" aria-selected="${i === box._active}"><span class="cb-l">${mark(o.label, v)}</span><span class="cb-s">${mark(o.sub, v)}</span></li>`).join('');
   list.hidden = false; input.setAttribute('aria-expanded', 'true');
@@ -313,6 +321,7 @@ document.addEventListener('input', e => {
     if (name === 'poliza') { st.polizaTxt = v; const p = poliza(st.polizaId); if (p && norm(v) !== norm(p.numero)) st.polizaId = ''; }
     if (name === 'asegurado') { st.asegurado = v; if (norm(v) !== norm(st.picked)) st.picked = ''; }
     if (name === 'cert') st.certificado = v;
+    if (name === 'paciente') st.paciente = v;
     if (st === RX) rxKeep();
     cbOpen(i);
     const h = $('.row-hint', rowEl(st)); if (h) { const x = hintFila(st); h.innerHTML = x.html; h.dataset.estado = x.estado; }

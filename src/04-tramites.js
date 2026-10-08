@@ -130,9 +130,9 @@ function tramiteHTML(t, isNew) {
           ${fld('Póliza', `<select name="polizaId">${polizaOpts(t.clienteId, t.polizaId)}</select>`)}
           ${fld('Tipo', `<select name="tipo">${opt(TIPOS, t.tipo)}</select>`)}
           ${fld('Aseguradora', inp('aseguradora', t.aseguradora, 'text', 'list="dl-aseg"'))}
-          ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente"'))}
+          ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente" list="dl-personas"'))}
           ${fld('N.º de certificado', inp('certificado', t.certificado))}
-          ${fld('Paciente (si es dependiente)', inp('paciente', t.paciente))}
+          ${fld('Paciente (si es dependiente)', inp('paciente', t.paciente, 'text', 'list="dl-personas"'))}
           ${fld('Parentesco', `<select name="parentesco">${opt(PARENTESCOS, t.parentesco, 'Sin parentesco')}</select>`)}
           ${fld('Asunto', inp('asunto', t.asunto, 'text', 'placeholder="Ej.: Reembolso de medicamentos de octubre"'), 'full')}
           ${fld('Detalle', `<textarea name="descripcion" placeholder="Lo que pidió el cliente">${esc(t.descripcion)}</textarea>`, 'full')}
@@ -164,7 +164,7 @@ function tramiteHTML(t, isNew) {
       <div class="note-add"><label class="sr" for="note">Nota</label><input type="text" id="note" placeholder="Agregar nota: llamada, visita, lo que dijo la aseguradora…"><button class="btn" type="button" data-act="add-note">Anotar</button></div>
     </div>
     ${authors(t)}` : ''}
-    ${aseguradoraList()}
+    ${aseguradoraList()}<datalist id="dl-personas">${personasIndex().filter(p => p.rol !== 'Cliente').slice(0, 400).map(p => `<option value="${esc(p.nombre)}">${esc(subPersona(p))}</option>`).join('')}</datalist>
   </div>
   <div class="drawer-f">
     ${!isNew ? `<button class="btn ghost icon" type="button" data-act="tramite-more" aria-label="Más acciones">${ic('dots-three')}</button>` : ''}

@@ -89,6 +89,10 @@ En **Ajustes → Bandeja** hay tres listas:
 
 Las **respuestas** a correos anteriores no crean trámites: si la conversación es de un trámite, se anotan en su línea de tiempo (y se guardan sus adjuntos); si no, quedan en la pestaña **Conversaciones**. Todo lo automático queda en **Procesados** con la etiqueta *Automático* y se puede devolver a revisar. Solo se procesan correos que llegaron después de encender la función, y el mismo correo en el buzón de Silvia y en el de Ricardo cuenta una sola vez.
 
+## Personas
+
+La pestaña **Personas** junta a todos los asegurados, empleados de colectivas y dependientes, con sus reclamos. No hay que darlos de alta: cada persona nueva que entra en un reclamo (o que la app lee de un formulario) se guarda sola, y los dependientes quedan ligados a su titular en la póliza. Al escribir un nombre en Reclamos (en *Asegurado* o en *Paciente*) se llenan empresa, póliza, certificado, titular y parentesco. Desde la persona, **Nuevo reclamo** deja la fila lista.
+
 ## Reporte de lo ingresado
 
 En **Reclamos → Reporte de ingresados** (o **Trámites → Reporte**): hoy, ayer, esta semana, este mes o un rango de fechas; ingresados o con número asignado; quién lo ingresó y a qué hora. Sale como **Excel**, **Imagen** (en el teléfono se comparte directo a WhatsApp o Gmail), **PDF** o **Enviar por Gmail** (abre un correo nuevo y copia la tabla para pegarla con Ctrl+V).

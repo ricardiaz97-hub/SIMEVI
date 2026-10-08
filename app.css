@@ -686,3 +686,6 @@ a.btn.ghost{color:var(--muted)}
 /* Bandeja: aviso de lo que se hizo solo, y línea de tiempo con correos */
 .auto-banner{margin-bottom:14px}
 .tl li.mailev p svg,.tl li p > svg.i:first-child{width:14px;height:14px;vertical-align:-2px;margin-right:5px;color:var(--acc)}
+.linkish{background:none;border:0;padding:0;color:var(--acc-hi);font:inherit;cursor:pointer;text-align:left}
+@media (hover:hover) and (pointer:fine){.linkish:hover{text-decoration:underline;text-underline-offset:3px}}
+table mark,.doc mark{background:rgba(201,160,99,.28);color:inherit;border-radius:2px}
