@@ -3,9 +3,11 @@ document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act, id = el.dataset.id;
+  if (act === 'portal-abrir') { trasPortal(id); return; } // el enlace abre el portal en otra pestaña
   if (el.tagName === 'A' && act !== 'open-ref') return; // los enlaces navegan solos
   if (act !== 'open-ref' || el.tagName === 'A') e.preventDefault();
   switch (act) {
+    case 'portal-ok': marcarIngresadoPortal(id); break;
     case 'go': if (el.dataset.f === 'por-vencer') { S.f.polEst = 'por-vencer'; saveFilters(); } go(el.dataset.r); break;
     case 'more': {
       if ($('.more-sheet')) { $('.more-sheet').remove(); break; }

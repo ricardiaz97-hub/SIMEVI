@@ -138,6 +138,7 @@ function tramiteHTML(t, isNew) {
         </div>
       </div>
       <div class="sec"><div class="label">Con la aseguradora</div>
+        ${(() => { const pt = portalDe(t.aseguradora || poliza(t.polizaId)?.aseguradora); return pt ? `<div class="portal-line"><a class="rx-online" href="${pt.url}" target="_blank" rel="noopener" data-act="portal-abrir" data-id="${t.id}">${ic('arrow-square-out')}<span>Ingresar en línea en ${pt.nombre}</span></a></div>` : ''; })()}
         <div class="grid2">
           ${fld('Llegó el', inp('fechaSolicitud', t.fechaSolicitud, 'date'))}
           ${fld('Ingresado el', inp('fechaIngreso', t.fechaIngreso, 'date'))}

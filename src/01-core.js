@@ -55,6 +55,9 @@ const ETAPA = Object.fromEntries(ETAPAS.map(e => [e.k, e]));
 const etapasDe = tipo => tipo === 'Reclamo' ? ETAPAS : ETAPAS.filter(e => e.k !== 'pago');
 const CANALES = ['Portal de la aseguradora', 'Entrega en físico', 'Correo a la aseguradora'];
 const RAMOS = ['Vida', 'Gastos médicos', 'Accidentes personales', 'Automotor', 'Incendio', 'Daños', 'Responsabilidad civil', 'Fianzas', 'Transporte', 'Otro'];
+// Aseguradoras con portal para ingresar reclamos en línea. Las demás se entregan en físico.
+const PORTALES = [{ match: /\bsisa\b/i, nombre: 'SISA', url: 'https://www.sisa.com.sv/sisa/inicio' }];
+const portalDe = aseg => PORTALES.find(p => p.match.test(aseg || '')) || null;
 const ASEGURADORAS = ['ASESUISA', 'SISA', 'Seguros del Pacífico', 'MAPFRE La Centro Americana', 'Seguros Fedecrédito', 'Pan-American Life', 'Seguros Azul', 'Davivienda Seguros', 'ASSA', 'Seguros Futuro', 'Aseguradora Agrícola Comercial', 'Atlántida Vida', 'Quálitas'];
 const FRECUENCIAS = ['Mensual', 'Trimestral', 'Semestral', 'Anual'];
 const FORMAS = ['Cheque', 'Depósito', 'Transferencia'];

@@ -55,6 +55,9 @@ const ETAPA = Object.fromEntries(ETAPAS.map(e => [e.k, e]));
 const etapasDe = tipo => tipo === 'Reclamo' ? ETAPAS : ETAPAS.filter(e => e.k !== 'pago');
 const CANALES = ['Portal de la aseguradora', 'Entrega en físico', 'Correo a la aseguradora'];
 const RAMOS = ['Vida', 'Gastos médicos', 'Accidentes personales', 'Automotor', 'Incendio', 'Daños', 'Responsabilidad civil', 'Fianzas', 'Transporte', 'Otro'];
+// Aseguradoras con portal para ingresar reclamos en línea. Las demás se entregan en físico.
+const PORTALES = [{ match: /\bsisa\b/i, nombre: 'SISA', url: 'https://www.sisa.com.sv/sisa/inicio' }];
+const portalDe = aseg => PORTALES.find(p => p.match.test(aseg || '')) || null;
 const ASEGURADORAS = ['ASESUISA', 'SISA', 'Seguros del Pacífico', 'MAPFRE La Centro Americana', 'Seguros Fedecrédito', 'Pan-American Life', 'Seguros Azul', 'Davivienda Seguros', 'ASSA', 'Seguros Futuro', 'Aseguradora Agrícola Comercial', 'Atlántida Vida', 'Quálitas'];
 const FRECUENCIAS = ['Mensual', 'Trimestral', 'Semestral', 'Anual'];
 const FORMAS = ['Cheque', 'Depósito', 'Transferencia'];
@@ -739,6 +742,7 @@ function tramiteHTML(t, isNew) {
         </div>
       </div>
       <div class="sec"><div class="label">Con la aseguradora</div>
+        ${(() => { const pt = portalDe(t.aseguradora || poliza(t.polizaId)?.aseguradora); return pt ? `<div class="portal-line"><a class="rx-online" href="${pt.url}" target="_blank" rel="noopener" data-act="portal-abrir" data-id="${t.id}">${ic('arrow-square-out')}<span>Ingresar en línea en ${pt.nombre}</span></a></div>` : ''; })()}
         <div class="grid2">
           ${fld('Llegó el', inp('fechaSolicitud', t.fechaSolicitud, 'date'))}
           ${fld('Ingresado el', inp('fechaIngreso', t.fechaIngreso, 'date'))}
@@ -1214,6 +1218,7 @@ VIEWS.reclamos = () => {
       const pp = poliza(t.polizaId);
       const cli = clienteNombre(t.clienteId);
       const col = t.asegurado && norm(t.asegurado) !== norm(cli);
+      const pt = portalDe(t.aseguradora || pp?.aseguradora);
       return `<div class="rx-grid rx-row" data-id="${t.id}">
         <div class="rx-cell" data-l="Cliente">${col ? `<small class="rx-co">${esc(shortName(cli))}</small><b>${esc(t.asegurado)}</b>` : `<b>${esc(cli)}</b>`}<small>${t.paciente ? `Paciente: ${esc(t.paciente)}${t.parentesco ? ' (' + esc(t.parentesco.toLowerCase()) + ')' : ''}` : `${esc(t.codigo)} · ${fmtShort(t.fechaSolicitud)}`}</small></div>
         <div class="rx-cell" data-l="Póliza"><b class="tnum" style="font-weight:500">${esc(pp?.numero || '-')}</b><small>${esc([t.aseguradora, t.monto ? fmtMoney(t.monto) : ''].filter(Boolean).join(' · '))}</small></div>
@@ -1221,7 +1226,7 @@ VIEWS.reclamos = () => {
         <div class="rx-cell rx-docs" data-l="PDF">${(t.docs || []).length ? `<a class="rx-doc" href="${esc(docUrl(t.docs[0]))}" target="_blank" rel="noopener" title="${esc(t.docs.map(d => d.name).join('\n'))}" aria-label="Abrir ${esc(t.docs[0].name)}">${ic('file-pdf')}${t.docs.length > 1 ? `<sup>${t.docs.length}</sup>` : ''}</a>` : ''}<label class="rx-doc add" title="Agregar PDF" aria-label="Agregar PDF">${ic('plus')}<input type="file" multiple accept="application/pdf,image/*" hidden data-rx-upload="${t.id}"></label></div>
         <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="rn-${t.id}">Número de reclamo</label><input id="rn-${t.id}" type="text" class="rx-inline tnum" value="${esc(t.numeroReclamo || '')}" placeholder="Pendiente" data-rinline="numeroReclamo"></div>
         <div class="rx-cell" data-l="Notas"><label class="sr" for="rt-${t.id}">Notas</label><input id="rt-${t.id}" type="text" class="rx-inline" value="${esc(t.descripcion || '')}" placeholder="Agregar nota" data-rinline="descripcion"></div>
-        <div class="rx-cell rx-end" data-l="Etapa"><button type="button" class="rx-stagebtn" data-act="open-tramite" data-id="${t.id}" title="Abrir ${esc(t.codigo)}">${etapaPill(t)}</button></div>
+        <div class="rx-cell rx-end" data-l="Etapa"><button type="button" class="rx-stagebtn" data-act="open-tramite" data-id="${t.id}" title="Abrir ${esc(t.codigo)}">${etapaPill(t)}</button>${pt ? `<a class="rx-online" href="${pt.url}" target="_blank" rel="noopener" data-act="portal-abrir" data-id="${t.id}" title="Abrir el portal de ${pt.nombre}">${ic('arrow-square-out')}<span>Ingresar en línea</span></a>${PORTAL_ABIERTO.has(t.id) && t.etapa === 'recibido' ? `<button type="button" class="rx-online ok" data-act="portal-ok" data-id="${t.id}">${ic('check')}<span>Ya lo ingresé</span></button>` : ''}` : ''}</div>
       </div>`;
     }).join('')}` : `<div class="panel-b">${emptyState('first-aid', all.length ? 'Nada con estos filtros' : 'Aún no hay reclamos', all.length ? 'Prueba con “Todos”.' : 'Escribe el primero arriba o adjunta el formulario en PDF.')}</div>`}
   </div>`;
@@ -1399,6 +1404,27 @@ async function leerSubidos(docs) {
     rows: forms.map(x => filaDeFormulario(x.f, x.ref)), aseguradora: ''
   });
   RX.docs = []; rxKeep(); syncRow(RX);
+}
+
+/* "Ingresar en línea": abre el portal de la aseguradora y deja en la fila un botón "Ya lo ingresé". */
+const PORTAL_ABIERTO = new Set();
+function trasPortal(id) {
+  const t = tramite(id);
+  if (!t || t.etapa !== 'recibido') return;
+  PORTAL_ABIERTO.add(id);
+  setTimeout(() => render(false), 50);
+}
+
+async function marcarIngresadoPortal(id) {
+  const t0 = tramite(id); if (!t0) return;
+  const t = structuredClone(t0);
+  const pt = portalDe(t.aseguradora || poliza(t.polizaId)?.aseguradora);
+  t.etapa = 'ingresado'; t.canal = 'Portal de la aseguradora'; t.fechaIngreso = t.fechaIngreso || todayISO();
+  t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Ingresado en línea en el portal de ${pt?.nombre || t.aseguradora || 'la aseguradora'}.` }];
+  try { await save('tramites', t, `${t.codigo} a Ingresado (en línea)`, 'movió'); } catch (e) { return; }
+  PORTAL_ABIERTO.delete(id);
+  toast(`${t.codigo}: Ingresado`);
+  render(false);
 }
 
 /* ---------- Pagos (libro de cheques y depósitos) ---------- */
@@ -2308,9 +2334,11 @@ document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const act = el.dataset.act, id = el.dataset.id;
+  if (act === 'portal-abrir') { trasPortal(id); return; } // el enlace abre el portal en otra pestaña
   if (el.tagName === 'A' && act !== 'open-ref') return; // los enlaces navegan solos
   if (act !== 'open-ref' || el.tagName === 'A') e.preventDefault();
   switch (act) {
+    case 'portal-ok': marcarIngresadoPortal(id); break;
     case 'go': if (el.dataset.f === 'por-vencer') { S.f.polEst = 'por-vencer'; saveFilters(); } go(el.dataset.r); break;
     case 'more': {
       if ($('.more-sheet')) { $('.more-sheet').remove(); break; }

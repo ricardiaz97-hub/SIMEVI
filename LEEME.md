@@ -71,6 +71,8 @@ No hace falta cargar todo antes: si el cliente, la póliza o el empleado no exis
 
 **Lectura de PDFs:** en la Bandeja, los correos con PDF tienen el botón **Leer reclamos del PDF**. Google Drive saca el texto del escaneo y la app busca los formularios de reclamo (contratante, póliza, afiliado, certificado, asegurado afectado, parentesco y total). Si el PDF trae varios formularios salen varias filas; lo demás que venga escaneado (recetas, facturas) se ignora. También funciona al adjuntar un PDF en la fila de Reclamos. Google lee hasta unas 10 páginas por PDF.
 
+**Ingresar en línea:** los reclamos de SISA tienen el botón **Ingresar en línea**, que abre el portal de SISA en otra pestaña. Si el reclamo estaba como *Recibido*, al volver aparece **Ya lo ingresé** para pasarlo a *Ingresado* con un clic. Pan-American Life y las demás no tienen ese botón porque se entregan en físico. Para agregar otra aseguradora con portal, edita `PORTALES` en `src/01-core.js`.
+
 ## Uso diario
 
 1. Llega una solicitud al correo → **Bandeja → Crear trámite**. Los PDFs se copian solos a Drive.
