@@ -96,6 +96,13 @@ document.addEventListener('click', async e => {
       toast('Quitado. Pulsa Guardar para confirmar.');
       break;
     }
+    case 'pago-de-tramite': { const t = tramite(id); if (t) newPagoFromTramite(t); break; }
+    case 'auto-sumar': {
+      const v = [...autoRemitentes(), el.dataset.v].join(', ');
+      try { await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'auto-remitentes') || {}), id: 'auto-remitentes', valor: v }, `Crean trámites solos: ${el.dataset.v}`); } catch (e) { break; }
+      render(false); toast(`Los correos nuevos de ${el.dataset.v} se volverán trámites solos`);
+      break;
+    }
     case 'mail-tramite': case 'mail-numero': case 'mail-pago': case 'mail-skip': case 'mail-volver': case 'mail-estado': case 'mail-novedad': mailAction(act, id, el); break;
     case 'inbox-refresh': S.inbox = S.mode === 'demo' ? S.inbox : null; loadInbox(true); if (S.mode === 'demo') toast('Bandeja al día'); break;
     case 'switch-user': {

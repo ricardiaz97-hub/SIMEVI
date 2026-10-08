@@ -54,15 +54,19 @@ function classify(m) {
   const money = txt.match(/(?:US)?\$\s?([\d.,]+\d)/);
   if (money) r.monto = +money[1].replace(/,(?=\d{3}\b)/g, '').replace(/,/g, '');
   const pol = [...txt.matchAll(/p[oó]liza\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*([A-Z]{0,5}[A-Z0-9-]*\d[A-Z0-9-]*)/gi)].map(x => x[1].replace(/-+$/, '')).find(x => x.length >= 4);
+  const cv = camposAviso(txt);
   if (pol) r.polizaNum = pol.toUpperCase();
   const cheque = txt.match(/cheque\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*(\d{5,})/i);
   const ref = txt.match(/referencia\s*:?\s*([A-Z0-9-]{5,})/i);
   // Número de reclamo: se prefiere "número de reclamo X" y se descartan números de póliza conocidos.
   const polizas = new Set(DB.polizas.map(p => norm(p.numero)).concat(r.polizaNum ? [norm(r.polizaNum)] : []));
-  const cands = [...txt.matchAll(/(n[uú]mero\s+de\s+)?(?:reclamo|siniestro|caso|gesti[oó]n)\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*([A-Z]{1,6}-[A-Z0-9-]*\d[A-Z0-9-]*|\d{5,})/gi)]
+  const cands = [...txt.matchAll(/(n[uú]mero\s+de\s+)?(?:reclamo|siniestro|caso|gesti[oó]n)\s*(?:n[°oº.]*|#|n[uú]mero)?\s*[:,]?\s*([A-Z]{1,6}-[A-Z0-9-]*\d[A-Z0-9-]*|\d{5,})/gi)]
     .filter(x => !polizas.has(norm(x[2])))
     .sort((a, b) => (b[1] ? 1 : 0) - (a[1] ? 1 : 0));
-  const num = cands[0] ? [cands[0][0], cands[0][2]] : null;
+  let num = cands[0] ? [cands[0][0], cands[0][2]] : null;
+  // Referencia de trámite (MOD-57.1_511432) o código suelto tipo SALC-133283-2026
+  if (cv.referencia) num = [cv.referencia, cv.referencia];
+  if (!num) { const c = (txt.match(/\b[A-Z]{2,6}-\d{3,8}-\d{2,4}\b/g) || []).find(x => !polizas.has(norm(x))); if (c) num = [c, c]; }
   if (/cheques?\b.*disponibles?|disponibles?\b.*cheques?|dep[oó]sito|transferencia|abono\s+en\s+cuenta/i.test(txt) && r.aseguradora) {
     r.kind = 'pago';
     r.forma = /cheque/i.test(txt) ? 'Cheque' : /transferencia/i.test(txt) ? 'Transferencia' : 'Depósito';
@@ -72,10 +76,12 @@ function classify(m) {
   }
   if (num) r.reclamo = num[1].toUpperCase();
   // ¿De quién es?
-  const p = r.polizaNum && DB.polizas.find(x => norm(x.numero) === norm(r.polizaNum));
+  const p = polizaPorNumero(cv.poliza || r.polizaNum);
   if (p) { r.polizaId = p.id; r.clienteId = p.clienteId; r.aseguradora = r.aseguradora || p.aseguradora; }
   if (!r.clienteId) { const c = DB.clientes.find(c => c.correo && norm(c.correo) === norm(m.from)); if (c) r.clienteId = c.id; }
+  if (!r.clienteId && cv.cliente) { const c = clientePorNombre(cv.cliente, txt); if (c) r.clienteId = c.id; }
   if (!r.clienteId) { const c = DB.clientes.find(c => norm(txt).includes(norm(c.nombre.split(',')[0]))); if (c) r.clienteId = c.id; }
+  r.campos = cv;
   // ¿Qué trámite?
   let t = r.reclamo && DB.tramites.find(t => t.numeroReclamo && norm(t.numeroReclamo) === norm(r.reclamo));
   if (!t && r.polizaId) t = DB.tramites.filter(t => t.polizaId === r.polizaId && tramiteAbierto(t)).sort((a, b) => ETAPAS.findIndex(e => e.k === a.etapa) - ETAPAS.findIndex(e => e.k === b.etapa))[0];
@@ -150,6 +156,7 @@ VIEWS.bandeja = () => {
       else if (t) acts += btn('mail-estado', m.id, `${k.kind === 'pago' ? 'Registrar pago en' : 'Poner ' + dest + ' en'} ${esc(t.codigo)}`, 'primary', k.kind === 'pago' ? 'hand-coins' : 'seal-check');
       else acts += btn('mail-estado', m.id, k.dudas?.length ? `¿Cuál de ${k.dudas.length}? Elegir trámite` : 'Elegir trámite', 'primary', 'folder-open', 'data-pick="1"');
       if (t && k.kind !== 'info' && !varios) acts += btn('mail-estado', m.id, 'Otro trámite', 'ghost', '', 'data-pick="1"');
+      if (!t && !varios && k.kind !== 'info') acts += btn('mail-tramite', m.id, 'No estaba: crear trámite', '', 'plus');
       if (!t && !varios && k.kind === 'pago') acts += btn('mail-pago', m.id, 'Registrar pago suelto');
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
       pill = `<span class="pill ${{ requerido: 'warn', rechazado: 'bad', pago: 'ok' }[k.estado.etapa] || 'gold'}">${esc(k.estado.n)}${varios ? ` · ${x.rows.length}` : ''}</span>`;
@@ -172,6 +179,8 @@ VIEWS.bandeja = () => {
         if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += btn('mail-varios', m.id, 'Separar en varios');
       }
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
+      // Alguien de un remitente clave que manda reclamos o modificaciones: ofrecer que sus correos creen trámites solos
+      if (!auto && k.kind === 'solicitud' && coincide(m.from, remitentes()) && tipoDeCorreo(m)) acts += btn('auto-sumar', m.id, `Que sus correos creen trámites solos`, 'ghost', 'sparkle', `data-v="${esc(m.from)}"`);
       pill = varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>`
         : k.kind === 'solicitud' ? `<span class="pill ${auto ? 'warn' : 'info'}">${auto ? 'Para revisar' : 'Nueva solicitud'}</span>`
         : `<span class="pill ${{ numero: 'gold', pago: 'ok', info: '' }[k.kind]}">${{ numero: 'Número de reclamo', pago: 'Pago disponible', info: 'Ya registrado' }[k.kind]}</span>`;
@@ -252,6 +261,15 @@ async function mailAction(act, id, el) {
   if (act === 'mail-tramite') {
     let docs = [];
     try { docs = await importAttachments(m, clienteNombre(k.clienteId)); } catch (e) { toast('No se copiaron los adjuntos: ' + e.message, 'err'); }
+    if (k.estado) { // aviso de la aseguradora de algo que no estaba registrado: se crea con sus datos
+      const cv = k.campos || {};
+      const tt = norm(cv.tipo);
+      const tipoE = !k.estado.otros ? 'Reclamo' : /inclu/.test(tt) ? 'Inclusión' : /exclu/.test(tt) ? 'Exclusión' : /renov/.test(tt) ? 'Renovación' : /emisi/.test(tt) ? 'Emisión' : 'Modificación';
+      const pid = k.polizaId || '';
+      openTramite(null, { clienteId: k.clienteId || poliza(pid)?.clienteId || '', polizaId: pid, aseguradora: k.aseguradora || '', tipo: tipoE, asunto: cv.tipo ? nombrePropio(cv.tipo).replace(/^(\S+)/, w => w) : m.subject || '', descripcion: resumenCuerpo(m, 400), asegurado: cv.asegurado ? nombrePropio(cv.asegurado) : '', numeroReclamo: k.reclamo || '', etapa: k.reclamo ? 'numero' : 'ingresado', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), fechaIngreso: (m.fecha || nowISO()).slice(0, 10), canal: CANALES[0], gmailId: m.id, hilo: m.raiz || '' });
+      cur.afterSave = async t => { await markMail(id, `Trámite ${t.codigo} (desde aviso de ${k.aseguradora})`, t.id); };
+      return;
+    }
     const tipo = /renova/i.test(m.subject + m.snippet) ? 'Renovación' : /exclu/i.test(m.subject + m.snippet) ? 'Exclusión' : /inclu/i.test(m.subject + m.snippet) ? 'Inclusión' : /modific|cambio/i.test(m.subject + m.snippet) ? 'Modificación' : 'Reclamo';
     openTramite(null, { clienteId: k.clienteId || '', polizaId: k.polizaId || '', aseguradora: k.aseguradora || poliza(k.polizaId)?.aseguradora || '', tipo, asunto: m.subject || '', descripcion: m.snippet || '', docs, hilo: m.raiz || '', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), gmailId: m.id, monto: k.kind === 'solicitud' ? '' : '' });
     cur.afterSave = async t => { await markMail(id, `Trámite ${t.codigo}`, t.id); };

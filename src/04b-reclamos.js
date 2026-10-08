@@ -165,7 +165,7 @@ async function asegurarEntidades(st, aseguradora = '') {
   }
   if (!st.polizaId && limpiar(st.polizaTxt || '')) {
     const num = limpiar(st.polizaTxt).toUpperCase();
-    const ya = DB.polizas.find(p => norm(p.numero).replace(/\s/g, '') === norm(num).replace(/\s/g, ''));
+    const ya = polizaPorNumero(num);
     if (ya) st.polizaId = ya.id;
     else {
       const col = esColectiva(st) || cliente(st.clienteId)?.tipo === 'Empresa';

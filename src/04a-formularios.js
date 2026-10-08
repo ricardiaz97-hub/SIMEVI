@@ -69,17 +69,40 @@ function parecido(a, b) {
   return comun / Math.min(x.length, y.length);
 }
 
+// Siglas o nombre corto: "INJIBOA" ↔ "Ingenio Central Azucarero Jiboa" (IN + JIBOA), "ICAJ" ↔ iniciales
+function sigla(corto, largo) {
+  const x = tokens(corto), y = tokens(largo);
+  if (x.length !== 1 || y.length < 2 || x[0].length < 4) return false;
+  const s = x[0], ult = y[y.length - 1];
+  if ([1, 2, 3].some(k => s === y[0].slice(0, k) + ult)) return true;
+  return s === y.map(w => w[0]).join('');
+}
+const mismoCliente = (a, b) => parecido(a, b) >= 0.6 || sigla(a, b) || sigla(b, a);
+
 // El contratante del formulario contra los clientes registrados ("INGENIO … JIBOA" ↔ "INJIBOA")
 function clientePorNombre(nombre, textoCompleto = '') {
   let mejor = null, nota = 0;
   for (const c of DB.clientes) {
     let s = parecido(c.nombre, nombre);
+    if (s < 0.6 && (sigla(c.nombre, nombre) || sigla(nombre, c.nombre))) s = 0.8;
     const corto = tokens(c.nombre)[0];
     // Nombres cortos de empresa ("INJIBOA") que aparecen en el sello o la firma del formulario
     if (s < 0.6 && c.tipo === 'Empresa' && tokens(c.nombre).length <= 2 && corto && corto.length >= 5 && tokens(textoCompleto).includes(corto)) s = 0.7;
     if (s > nota) { nota = s; mejor = c; }
   }
   return nota >= 0.6 ? mejor : null;
+}
+
+// SISA escribe la póliza sin prefijo ("507549" para SALC-507549)
+function polizaPorNumero(num) {
+  if (!num) return null;
+  const n = norm(num).replace(/[\s.]/g, '');
+  const exacta = DB.polizas.find(p => norm(p.numero).replace(/[\s.]/g, '') === n);
+  if (exacta) return exacta;
+  const dig = n.replace(/\D/g, '');
+  if (dig.length < 5) return null;
+  const c = DB.polizas.filter(p => { const d = norm(p.numero).replace(/\D/g, ''); return d === dig || d.endsWith(dig); });
+  return c.length === 1 ? c[0] : null;
 }
 
 /* Un formulario leído se convierte en una fila para revisar, ya ligada a lo que exista. */
@@ -90,7 +113,7 @@ function filaDeFormulario(f, docRef) {
     parentesco: f.paciente && parecido(f.paciente, f.afiliado) < 0.8 ? f.parentesco : '',
     monto: f.total ? f.total.toFixed(2) : '', notas: f.notas, docs: docRef ? [docRef] : [], polizaTxt: f.poliza, clienteTxt: f.contratante, fecha: f.fecha
   });
-  const p = f.poliza && DB.polizas.find(x => norm(x.numero).replace(/\s/g, '') === norm(f.poliza));
+  const p = polizaPorNumero(f.poliza);
   if (p) { st.polizaId = p.id; st.clienteId = p.clienteId; st.clienteTxt = clienteNombre(p.clienteId); }
   else { const c = clientePorNombre(f.contratante, f.texto); if (c) { st.clienteId = c.id; st.clienteTxt = c.nombre; } }
   const pp = poliza(st.polizaId);

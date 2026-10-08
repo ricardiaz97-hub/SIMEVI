@@ -131,7 +131,7 @@ const nextCodigo = () => {
 };
 
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v6';
+const DEMO_KEY = 'simevi-demo-v7';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -239,10 +239,13 @@ function seedDemo() {
     { id: 'c5', nombre: 'Ana Lucía Portillo Cañas', tipo: 'Persona', documento: '05236671-0', contacto: '', correo: 'analucia.portillo@outlook.com', telefono: '7890-3321', notas: '', portal: 'ana6m3k8t4z', ...by(R, -210, 16) },
     { id: 'c6', nombre: 'Distribuidora El Faro, S.A. de C.V.', tipo: 'Empresa', documento: '0511-120712-101-2', contacto: 'Ing. Óscar Villalta (Gerencia)', correo: 'ovillalta@elfaro.com.sv', telefono: '2338-9002', notas: 'Incendio de bodega en Soyapango y flotilla de 6 vehículos.', portal: 'faro3p9x2k7m', ...by(SD, -500, 9) },
     { id: 'c7', nombre: 'Carlos Ernesto Mejía Flores', tipo: 'Persona', documento: '02781934-5', contacto: '', correo: 'cmejiaflores@gmail.com', telefono: '7601-4475', notas: '', portal: 'carlos8v4n2q', ...by(R, -150, 14) },
+    { id: 'c9', nombre: 'INJIBOA, S.A. de C.V.', tipo: 'Empresa', documento: '', contacto: 'Maricela Bonilla (Planillas/RR. HH.)', correo: 'mbonilla@injiboa.com.sv', telefono: '', notas: 'Ingenio Central Azucarero Jiboa. Colectivo de gastos médicos y vida con SISA.', portal: 'injiboa5k2w8', ...by(SD, -500, 9) },
     { id: 'c8', nombre: 'Rosa Amelia Quintanilla', tipo: 'Persona', documento: '01693357-8', contacto: '', correo: 'rosaquintanilla61@yahoo.com', telefono: '7234-8810', notas: 'Paciente crónica, reclamos mensuales de medicamentos.', portal: 'rosa5k7w3h9t', ...by(SD, -620, 10) }
   ];
 
   const P = [
+    { id: 'p12', numero: 'SALC-507549', aseguradora: 'SISA', ramo: 'Gastos médicos', modalidad: 'Colectiva', clienteId: 'c9', vigenciaDesde: D(-200), vigenciaHasta: D(165), prima: 0, frecuencia: 'Mensual', suma: 0, notas: '', asegurados: [{ nombre: 'Eliseo Alexander Portillo Bonilla', documento: '', certificado: '131', plan: '' }, { nombre: 'Augusto Cesar Martinez Bonilla', documento: '', certificado: '117', plan: '' }], ...by(SD, -200, 9) },
+    { id: 'p13', numero: 'VICO-503046', aseguradora: 'SISA', ramo: 'Vida', modalidad: 'Colectiva', clienteId: 'c9', vigenciaDesde: D(-200), vigenciaHasta: D(165), prima: 0, frecuencia: 'Mensual', suma: 0, notas: '', asegurados: [], ...by(SD, -200, 9) },
     { id: 'p1', numero: 'VC-2025-004517', aseguradora: 'ASESUISA', ramo: 'Vida', modalidad: 'Colectiva', clienteId: 'c1', vigenciaDesde: D(-280), vigenciaHasta: D(85), prima: 1840.5, frecuencia: 'Mensual', suma: 15000, notas: 'Suma asegurada: 24 salarios por empleado.', asegurados: [
       { nombre: 'Mauricio Guardado Ayala', documento: '02219834-1', certificado: '001', plan: 'Ejecutivo' },
       { nombre: 'Karla Beatriz Ventura', documento: '04411902-7', certificado: '002', plan: 'Ejecutivo' },
@@ -302,6 +305,8 @@ function seedDemo() {
 
   const evA = (n, h, mi, por, a, texto) => ({ fecha: ts(n, h, mi), por, tipo: 'etapa', a, texto });
   Tm.push(
+    { id: 't14', codigo: `T-${y}-0025`, tipo: 'Reclamo', clienteId: 'c9', polizaId: 'p12', aseguradora: 'SISA', asunto: 'Reclamo de Eliseo Portillo', asegurado: 'Eliseo Alexander Portillo Bonilla', certificado: '131', descripcion: 'Consulta y exámenes.', canal: 'Portal de la aseguradora', etapa: 'analisis', numeroReclamo: 'SALC-121578-2026', monto: 300, fechaSolicitud: D(-25), fechaIngreso: D(-24), responsable: SD, visibleCliente: true, notaCliente: '', docs: [], eventos: [evA(-25, 9, 0, SD, 'recibido', 'Recibido de Maricela.'), evA(-24, 10, 0, SD, 'ingresado', 'Ingresado en el portal de SISA.'), evA(-20, 11, 0, SD, 'numero', 'Número asignado SALC-121578-2026.')], ...by(SD, -25, 9) },
+    { id: 't15', codigo: `T-${y}-0044`, tipo: 'Modificación', clienteId: 'c9', polizaId: 'p13', aseguradora: 'SISA', asunto: 'Cambio de beneficiarios', descripcion: 'Formulario firmado por el empleado.', canal: 'Portal de la aseguradora', etapa: 'ingresado', numeroReclamo: '', monto: 0, fechaSolicitud: D(-1), fechaIngreso: D(0), responsable: SD, visibleCliente: true, notaCliente: '', docs: [], eventos: [evA(-1, 15, 0, SD, 'recibido', 'Recibido de Maricela.'), evA(0, 8, 40, SD, 'ingresado', 'Ingresado en EVA (portal de SISA).')], ...by(SD, -1, 15) },
     { id: 't11', codigo: `T-${y}-0041`, tipo: 'Reclamo', clienteId: 'c8', polizaId: 'p11', aseguradora: 'SISA', asunto: 'Reembolso de medicamentos de octubre', asegurado: 'Rosa Amelia Quintanilla', descripcion: 'Farmacia y consulta de control.', canal: 'Portal de la aseguradora', etapa: 'ingresado', numeroReclamo: '', monto: 96.3, fechaSolicitud: D(0), fechaIngreso: D(0), responsable: SD, visibleCliente: true, notaCliente: '', docs: [{ id: 'd10', name: 'Facturas octubre.pdf', size: 300000 }], eventos: [evA(0, 8, 5, SD, 'recibido', 'Recibido por correo de la clienta.'), evA(0, 9, 12, SD, 'ingresado', 'Ingresado en línea en el portal de SISA.')], ...by(SD, 0, 8), actualizado: ts(0, 9, 12), actualizadoPor: SD },
     { id: 't12', codigo: `T-${y}-0042`, tipo: 'Reclamo', clienteId: 'c5', polizaId: 'p7', aseguradora: 'ASESUISA', asunto: 'Reembolso consulta pediatra', asegurado: 'Ana Lucía Portillo Cañas', paciente: 'Mateo Portillo', parentesco: 'Hijo(a)', descripcion: 'Consulta y receta.', canal: 'Entrega en físico', etapa: 'numero', numeroReclamo: 'GM-AS-2026-77310', monto: 45, fechaSolicitud: D(-1), fechaIngreso: D(0), responsable: R, visibleCliente: true, notaCliente: '', docs: [], eventos: [evA(-1, 11, 20, R, 'recibido', 'Recibido por correo.'), evA(0, 10, 40, R, 'ingresado', 'Entregado en físico en ASESUISA.'), evA(0, 14, 5, R, 'numero', 'Número asignado GM-AS-2026-77310.')], ...by(R, -1, 11), actualizado: ts(0, 14, 5), actualizadoPor: R },
     { id: 't13', codigo: `T-${y}-0043`, tipo: 'Modificación', clienteId: 'c1', polizaId: 'p1', aseguradora: 'ASESUISA', asunto: 'Cambio de plan de Delmy Chicas', descripcion: 'De Operativo a Ejecutivo.', canal: 'Correo a la aseguradora', etapa: 'ingresado', numeroReclamo: '', monto: 0, fechaSolicitud: D(0), fechaIngreso: D(0), responsable: SD, visibleCliente: true, notaCliente: '', docs: [], eventos: [evA(0, 8, 30, SD, 'recibido', 'Recibido de RR. HH.'), evA(0, 11, 55, SD, 'ingresado', 'Enviado por correo a ASESUISA.')], ...by(SD, 0, 8), actualizado: ts(0, 11, 55), actualizadoPor: SD }
@@ -316,8 +321,15 @@ function seedDemo() {
 
   const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '', x = {}) => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body, cuenta: R, mid: `<${id}@demo>`, raiz: x.raiz || `<${id}@demo>`, respuesta: !!x.raiz, ...x });
   const inbox = [
-    mail('m14', 0, 13, 'notificaciones@sisa.com.sv', 'SISA Notificaciones', 'Reclamos en análisis', 'Le informamos que el reclamo GM-RE-2026-51022 se encuentra en análisis por nuestro departamento médico.', [], 'Estimado corredor:\nLe informamos que el reclamo GM-RE-2026-51022 de la asegurada Rosa Amelia Quintanilla se encuentra en análisis por nuestro departamento médico.\nAtentamente, SISA.'),
-    mail('m13', 0, 12, 'notificaciones@sisa.com.sv', 'SISA Notificaciones', 'Aviso de reclamo', 'Se ha registrado el reclamo número GM-RE-2026-51022 a nombre de Rosa Amelia Quintanilla por US$96.30.', [], 'Estimado corredor:\nSe ha registrado el reclamo número GM-RE-2026-51022 a nombre de Rosa Amelia Quintanilla, póliza GM-I-298845, por US$96.30.\nAtentamente, SISA.'),
+    mail('m14', 0, 13, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Reclamos en análisis', 'Póliza: 507549 Contratante: INJIBOA, S.A DE C.V. Asegurado: ADRIANA REBECA MARTINEZ JIMENEZ. Su reclamo SALC-133283-2026 se encuentra en análisis.', [], 'NOTIFICACIÓN\nPóliza: 507549\nContratante: INJIBOA, S.A DE C.V.\nAsegurado: ADRIANA REBECA MARTINEZ JIMENEZ\nEstimado Cliente,\nLe informamos que su reclamo No. SALC-133283-2026 se encuentra en análisis.\nSISA, VIDA, S.A., SEGUROS DE PERSONAS'),
+    mail('m13', 0, 12, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Aviso de Reclamo', 'Póliza: 507549 Contratante: INJIBOA, S.A DE C.V. Asegurado: ADRIANA REBECA MARTINEZ JIMENEZ Por este medio le confirmamos el ingreso de su aviso de reclamo, SALC-133283-2026…', [], 'NOTIFICACIÓN\nEstimado Cliente,\nPóliza: 507549\nContratante: INJIBOA, S.A DE C.V.\nAsegurado: ADRIANA REBECA MARTINEZ JIMENEZ\nPor este medio le confirmamos el ingreso de su aviso de reclamo, SALC-133283-2026, en referencia al siniestro ocurrido el día 03/10/2026, a nuestro sistema.\nAsimismo, hacemos de su conocimiento que el aviso del reclamo no constituye una aceptación de cobertura por parte de SISA, VIDA, S.A., SEGUROS DE PERSONAS ya que el pago del siniestro se determinará luego del análisis del mismo en base a las condiciones de la póliza.\nCualquier consulta que tenga, favor no dude en contactarnos a nuestro SISAphone 2241-0000 o por SISA Chat desde www.sisa.com.sv, donde siempre será un placer atenderle.\nSin más que agregar nos suscribimos.\nSISA, VIDA, S.A., SEGUROS DE PERSONAS'),
+    mail('m16', 0, 11, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Trámite registrado bajo la referencia: MOD-57.1_511432', 'Estimado Intermediario SILVIA MAGDALENA VEGA DE DIAZ: Su información ha sido recibida satisfactoriamente…', [], 'NOTIFICACIÓN\nEstimado Intermediario SILVIA MAGDALENA VEGA DE DIAZ:\nSu información ha sido recibida satisfactoriamente según la siguiente información:\nCódigo Referencia: MOD-57.1_511432.\nPóliza: VICO-503046.\nCliente: INJIBOA, S.A DE C.V. ..\nTipo de trámite: Modificación CAMBIO DE BENEFICIARIOS.\nObservaciones: Solicitan procesar el cambio de beneficiarios conforme a documentación anexa..\nEl seguimiento a su solicitud podrá realizarlo a través del siguiente link:\nPresione para abrir el tracking\nTambién podrá dar seguimiento a su solicitud ingresando a su portal de EVA en la opción \'Mis Tareas\'.'),
+    mail('m17', 0, 9, 'notificaciones@sisa.com.sv', 'Notificaciones SISA', 'Cheque Disponible - SALC-121578-2026', 'Póliza: 507549 Contratante: INJIBOA, S.A DE C.V. Asegurado: ELISEO ALEXANDER PORTILLO BONILLA Estimado Cliente, Con relación a su reclamo No. SALC-121578-2026…', [{ id: 'a17', name: 'Carta Liquidación_GRS-56.1_440358.pdf', size: 210000, mime: 'application/pdf', ocr: 'SISA VIDA, S.A. CARTA DE LIQUIDACIÓN\nReclamo: SALC-121578-2026 Asegurado: ELISEO ALEXANDER PORTILLO BONILLA\nMonto reclamado US$ 300.00\nNo cubierto US$ 42.31\nTOTAL A REEMBOLSAR US$ 257.69' }], 'NOTIFICACIÓN\nPóliza: 507549\nContratante: INJIBOA, S.A DE C.V.\nAsegurado: ELISEO ALEXANDER PORTILLO BONILLA\nEstimado Cliente,\nCon relación a su reclamo No. SALC-121578-2026, por este medio le comunicamos que ya puede acercarse a nuestras oficinas a retirar el cheque correspondiente.\nPuede comunicarse con su Intermediario de Seguros, quien le podrá indicar en cuál de nuestras agencias podrá retirarlo.\nNuestros horarios de atención en agencias y Call Center son de lunes a viernes de 08:30 am a 05:00 pm, sin cerrar al mediodía.\nSin más que agregar nos suscribimos.\nSISA VIDA S.A Seguro de Personas'),
+    mail('m15', 0, 8, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla', 'RECLAMOS SEGURO MEDICO HOSP.', 'Buen día Lic. Silvia y Ricardo, adjunto envío nota y documentos por gastos médicos de los asegurados: MILTON ROLANDO GARCIA, ELISEO PORTILLO Y AUGUSTO CESAR MARTINEZ BONILLA', [
+      { id: 'a15', name: 'MILTON GARCIA (hosp).pdf', size: 900000, mime: 'application/pdf', ocr: 'CONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) MILTON ROLANDO GARCIA PINEDA CERTIFICADO No.: 78\nASEGURADO:\n(Afectado) MILTON ROLANDO GARCIA PINEDA PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR HOSPITALIZACIÓN US$612.40\n1 Factura(s) POR HONORARIOS MÉDICOS US$150.00\nTOTAL DE LA RECLAMACIÓN US$762.40\nINFORME MÉDICO SI NO Dr.: Ricardo Antonio Mena' },
+      { id: 'a16', name: 'ELISEO PORTILLO (hosp).pdf', size: 700000, mime: 'application/pdf', ocr: 'CONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) ELISEO ALEXANDER PORTILLO BONILLA CERTIFICADO No.: 131\nASEGURADO:\n(Afectado) ELISEO ALEXANDER PORTILLO BONILLA PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) DE FARMACIA US$88.15\nTOTAL DE LA RECLAMACIÓN US$88.15\nINFORME MÉDICO SI NO Dr.: Karen Lissette Ayala' },
+      { id: 'a18', name: 'AUGUSTO MARTINEZ (nota y reclamo).pdf', size: 1100000, mime: 'application/pdf', ocr: 'INJIBOA Ingenio Central Azucarero Jiboa, S.A. de C.V. San Vicente, 06 de octubre de 2026\nLicenciada Silvia Magdalena Vega de Díaz, Asegurador SISA. Presente. Por medio de la presente remitimos reclamos de gastos médicos.\n\nCONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) AUGUSTO CESAR MARTINEZ BONILLA CERTIFICADO No.: 117\nASEGURADO:\n(Afectado) AUGUSTO CESAR MARTINEZ BONILLA PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR SERVICIOS DE LABORATORIO US$54.00\nTOTAL DE LA RECLAMACIÓN US$54.00\nINFORME MÉDICO SI NO Dr.: Teresa Ester Cea de Orellana' }
+    ], 'Buen día Lic. Silvia y Ricardo, adjunto envío nota y documentos por gastos médicos de los asegurados:\nMILTON ROLANDO GARCIA, ELISEO PORTILLO Y AUGUSTO CESAR MARTINEZ BONILLA\nGracias de antemano'),
     mail('m11', 0, 11, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla (INJIBOA)', 'RE: Reclamos gastos médicos semana 40', 'Buenas, se me olvidó la factura del laboratorio de José Mauricio. Se la adjunto. Saludos.', [{ id: 'a11', name: 'Factura laboratorio JM Landaverde.pdf', size: 120000, mime: 'application/pdf' }], 'Buenas, se me olvidó la factura del laboratorio de José Mauricio. Se la adjunto.\nSaludos.\n\nEl lun, 6 oct 2026 a las 10:02, Silvia de Díaz escribió:\n> Recibido, gracias.', { raiz: '<m9@demo>' }),
     mail('m12', 0, 9, 'mbonilla@injiboa.com.sv', 'Maricela Bonilla (INJIBOA)', 'RE: Consulta sobre deducible', 'Gracias Silvia, entonces el deducible aplica por evento. Saludos.', [], 'Gracias Silvia, entonces el deducible aplica por evento.\nSaludos.\n\nEl vie, 2 oct 2026 a las 15:40, Silvia de Díaz escribió:\n> El deducible es de $50 por evento.', { raiz: '<consulta-deducible@demo>' }),
     mail('m10', 0, 7, 'notificaciones@sisa.com.sv', 'SISA Notificaciones', 'Solicitud de información · Reclamo VI-RC-2026-7731', 'Para continuar con el reclamo VI-RC-2026-7731 necesitamos la constancia de alta médica firmada.', [], 'Estimado corredor:\nPara continuar con el reclamo VI-RC-2026-7731 necesitamos la constancia de alta médica firmada por el médico tratante.\nAtentamente, SISA.'),
@@ -544,6 +556,8 @@ function pendientes() {
   DB.tramites.filter(t => t.etapa === 'recibido').forEach(t => out.push({ p: 1, icon: 'upload-simple', t: `Ingresar ${t.codigo} en ${t.aseguradora || 'la aseguradora'}`, s: `${t.tipo} · ${clienteNombre(t.clienteId)} · llegó ${fmtAgo(t.fechaSolicitud + 'T12:00:00')}`, act: `data-act="open-tramite" data-id="${t.id}"` }));
   DB.pagos.filter(p => p.estado === 'disponible').forEach(p => out.push({ p: 2, icon: 'hand-coins', t: `Recoger ${p.forma.toLowerCase()} de ${fmtMoney(p.monto)} en ${p.aseguradora}`, s: `${clienteNombre(p.clienteId)} · aviso ${fmtShort(p.fechaAviso)}`, act: `data-act="open-pago" data-id="${p.id}"` }));
   DB.pagos.filter(p => p.estado === 'oficina').forEach(p => out.push({ p: 2, icon: 'money-wavy', t: `Entregar cheque ${p.numero} a ${clienteNombre(p.clienteId).split(',')[0]}`, s: `${fmtMoney(p.monto)} · en oficina desde ${fmtShort(p.fechaRecogido || p.fechaAviso)}`, act: `data-act="open-pago" data-id="${p.id}"` }));
+  DB.tramites.filter(t => t.etapa === 'pago' && !DB.pagos.some(p => p.tramiteId === t.id)).forEach(t => out.push({ p: 2, icon: 'hand-coins', t: `Registrar el cheque de ${t.codigo}`, s: `${t.aseguradora || 'La aseguradora'} avisó que está disponible · ${shortName(t.paciente || t.asegurado || clienteNombre(t.clienteId))}`, act: `data-act="pago-de-tramite" data-id="${t.id}"` }));
+  DB.tramites.filter(t => t.etapa === 'requerido').forEach(t => out.push({ p: 1, icon: 'note-pencil', t: `${t.aseguradora || 'La aseguradora'} pide información para ${t.codigo}`, s: `${shortName(t.paciente || t.asegurado || clienteNombre(t.clienteId))}${t.numeroReclamo ? ' · ' + t.numeroReclamo : ''}`, act: `data-act="open-tramite" data-id="${t.id}"` }));
   DB.tramites.filter(t => t.etapa === 'ingresado' && t.fechaIngreso && daysBetween(t.fechaIngreso, T) >= 3).forEach(t => out.push({ p: 3, icon: 'phone', t: `Pedir número a ${t.aseguradora} para ${t.codigo}`, s: `Ingresado hace ${daysBetween(t.fechaIngreso, T)} días · ${clienteNombre(t.clienteId)}`, act: `data-act="open-tramite" data-id="${t.id}"` }));
   DB.polizas.filter(p => !p.cancelada).forEach(p => {
     const d = diasPoliza(p);
@@ -962,17 +976,40 @@ function parecido(a, b) {
   return comun / Math.min(x.length, y.length);
 }
 
+// Siglas o nombre corto: "INJIBOA" ↔ "Ingenio Central Azucarero Jiboa" (IN + JIBOA), "ICAJ" ↔ iniciales
+function sigla(corto, largo) {
+  const x = tokens(corto), y = tokens(largo);
+  if (x.length !== 1 || y.length < 2 || x[0].length < 4) return false;
+  const s = x[0], ult = y[y.length - 1];
+  if ([1, 2, 3].some(k => s === y[0].slice(0, k) + ult)) return true;
+  return s === y.map(w => w[0]).join('');
+}
+const mismoCliente = (a, b) => parecido(a, b) >= 0.6 || sigla(a, b) || sigla(b, a);
+
 // El contratante del formulario contra los clientes registrados ("INGENIO … JIBOA" ↔ "INJIBOA")
 function clientePorNombre(nombre, textoCompleto = '') {
   let mejor = null, nota = 0;
   for (const c of DB.clientes) {
     let s = parecido(c.nombre, nombre);
+    if (s < 0.6 && (sigla(c.nombre, nombre) || sigla(nombre, c.nombre))) s = 0.8;
     const corto = tokens(c.nombre)[0];
     // Nombres cortos de empresa ("INJIBOA") que aparecen en el sello o la firma del formulario
     if (s < 0.6 && c.tipo === 'Empresa' && tokens(c.nombre).length <= 2 && corto && corto.length >= 5 && tokens(textoCompleto).includes(corto)) s = 0.7;
     if (s > nota) { nota = s; mejor = c; }
   }
   return nota >= 0.6 ? mejor : null;
+}
+
+// SISA escribe la póliza sin prefijo ("507549" para SALC-507549)
+function polizaPorNumero(num) {
+  if (!num) return null;
+  const n = norm(num).replace(/[\s.]/g, '');
+  const exacta = DB.polizas.find(p => norm(p.numero).replace(/[\s.]/g, '') === n);
+  if (exacta) return exacta;
+  const dig = n.replace(/\D/g, '');
+  if (dig.length < 5) return null;
+  const c = DB.polizas.filter(p => { const d = norm(p.numero).replace(/\D/g, ''); return d === dig || d.endsWith(dig); });
+  return c.length === 1 ? c[0] : null;
 }
 
 /* Un formulario leído se convierte en una fila para revisar, ya ligada a lo que exista. */
@@ -983,7 +1020,7 @@ function filaDeFormulario(f, docRef) {
     parentesco: f.paciente && parecido(f.paciente, f.afiliado) < 0.8 ? f.parentesco : '',
     monto: f.total ? f.total.toFixed(2) : '', notas: f.notas, docs: docRef ? [docRef] : [], polizaTxt: f.poliza, clienteTxt: f.contratante, fecha: f.fecha
   });
-  const p = f.poliza && DB.polizas.find(x => norm(x.numero).replace(/\s/g, '') === norm(f.poliza));
+  const p = polizaPorNumero(f.poliza);
   if (p) { st.polizaId = p.id; st.clienteId = p.clienteId; st.clienteTxt = clienteNombre(p.clienteId); }
   else { const c = clientePorNombre(f.contratante, f.texto); if (c) { st.clienteId = c.id; st.clienteTxt = c.nombre; } }
   const pp = poliza(st.polizaId);
@@ -1166,7 +1203,7 @@ async function asegurarEntidades(st, aseguradora = '') {
   }
   if (!st.polizaId && limpiar(st.polizaTxt || '')) {
     const num = limpiar(st.polizaTxt).toUpperCase();
-    const ya = DB.polizas.find(p => norm(p.numero).replace(/\s/g, '') === norm(num).replace(/\s/g, ''));
+    const ya = polizaPorNumero(num);
     if (ya) st.polizaId = ya.id;
     else {
       const col = esColectiva(st) || cliente(st.clienteId)?.tipo === 'Empresa';
@@ -1844,15 +1881,19 @@ function classify(m) {
   const money = txt.match(/(?:US)?\$\s?([\d.,]+\d)/);
   if (money) r.monto = +money[1].replace(/,(?=\d{3}\b)/g, '').replace(/,/g, '');
   const pol = [...txt.matchAll(/p[oó]liza\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*([A-Z]{0,5}[A-Z0-9-]*\d[A-Z0-9-]*)/gi)].map(x => x[1].replace(/-+$/, '')).find(x => x.length >= 4);
+  const cv = camposAviso(txt);
   if (pol) r.polizaNum = pol.toUpperCase();
   const cheque = txt.match(/cheque\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*(\d{5,})/i);
   const ref = txt.match(/referencia\s*:?\s*([A-Z0-9-]{5,})/i);
   // Número de reclamo: se prefiere "número de reclamo X" y se descartan números de póliza conocidos.
   const polizas = new Set(DB.polizas.map(p => norm(p.numero)).concat(r.polizaNum ? [norm(r.polizaNum)] : []));
-  const cands = [...txt.matchAll(/(n[uú]mero\s+de\s+)?(?:reclamo|siniestro|caso|gesti[oó]n)\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*([A-Z]{1,6}-[A-Z0-9-]*\d[A-Z0-9-]*|\d{5,})/gi)]
+  const cands = [...txt.matchAll(/(n[uú]mero\s+de\s+)?(?:reclamo|siniestro|caso|gesti[oó]n)\s*(?:n[°oº.]*|#|n[uú]mero)?\s*[:,]?\s*([A-Z]{1,6}-[A-Z0-9-]*\d[A-Z0-9-]*|\d{5,})/gi)]
     .filter(x => !polizas.has(norm(x[2])))
     .sort((a, b) => (b[1] ? 1 : 0) - (a[1] ? 1 : 0));
-  const num = cands[0] ? [cands[0][0], cands[0][2]] : null;
+  let num = cands[0] ? [cands[0][0], cands[0][2]] : null;
+  // Referencia de trámite (MOD-57.1_511432) o código suelto tipo SALC-133283-2026
+  if (cv.referencia) num = [cv.referencia, cv.referencia];
+  if (!num) { const c = (txt.match(/\b[A-Z]{2,6}-\d{3,8}-\d{2,4}\b/g) || []).find(x => !polizas.has(norm(x))); if (c) num = [c, c]; }
   if (/cheques?\b.*disponibles?|disponibles?\b.*cheques?|dep[oó]sito|transferencia|abono\s+en\s+cuenta/i.test(txt) && r.aseguradora) {
     r.kind = 'pago';
     r.forma = /cheque/i.test(txt) ? 'Cheque' : /transferencia/i.test(txt) ? 'Transferencia' : 'Depósito';
@@ -1862,10 +1903,12 @@ function classify(m) {
   }
   if (num) r.reclamo = num[1].toUpperCase();
   // ¿De quién es?
-  const p = r.polizaNum && DB.polizas.find(x => norm(x.numero) === norm(r.polizaNum));
+  const p = polizaPorNumero(cv.poliza || r.polizaNum);
   if (p) { r.polizaId = p.id; r.clienteId = p.clienteId; r.aseguradora = r.aseguradora || p.aseguradora; }
   if (!r.clienteId) { const c = DB.clientes.find(c => c.correo && norm(c.correo) === norm(m.from)); if (c) r.clienteId = c.id; }
+  if (!r.clienteId && cv.cliente) { const c = clientePorNombre(cv.cliente, txt); if (c) r.clienteId = c.id; }
   if (!r.clienteId) { const c = DB.clientes.find(c => norm(txt).includes(norm(c.nombre.split(',')[0]))); if (c) r.clienteId = c.id; }
+  r.campos = cv;
   // ¿Qué trámite?
   let t = r.reclamo && DB.tramites.find(t => t.numeroReclamo && norm(t.numeroReclamo) === norm(r.reclamo));
   if (!t && r.polizaId) t = DB.tramites.filter(t => t.polizaId === r.polizaId && tramiteAbierto(t)).sort((a, b) => ETAPAS.findIndex(e => e.k === a.etapa) - ETAPAS.findIndex(e => e.k === b.etapa))[0];
@@ -1940,6 +1983,7 @@ VIEWS.bandeja = () => {
       else if (t) acts += btn('mail-estado', m.id, `${k.kind === 'pago' ? 'Registrar pago en' : 'Poner ' + dest + ' en'} ${esc(t.codigo)}`, 'primary', k.kind === 'pago' ? 'hand-coins' : 'seal-check');
       else acts += btn('mail-estado', m.id, k.dudas?.length ? `¿Cuál de ${k.dudas.length}? Elegir trámite` : 'Elegir trámite', 'primary', 'folder-open', 'data-pick="1"');
       if (t && k.kind !== 'info' && !varios) acts += btn('mail-estado', m.id, 'Otro trámite', 'ghost', '', 'data-pick="1"');
+      if (!t && !varios && k.kind !== 'info') acts += btn('mail-tramite', m.id, 'No estaba: crear trámite', '', 'plus');
       if (!t && !varios && k.kind === 'pago') acts += btn('mail-pago', m.id, 'Registrar pago suelto');
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
       pill = `<span class="pill ${{ requerido: 'warn', rechazado: 'bad', pago: 'ok' }[k.estado.etapa] || 'gold'}">${esc(k.estado.n)}${varios ? ` · ${x.rows.length}` : ''}</span>`;
@@ -1962,6 +2006,8 @@ VIEWS.bandeja = () => {
         if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += btn('mail-varios', m.id, 'Separar en varios');
       }
       acts += btn('mail-skip', m.id, 'Archivar', 'ghost');
+      // Alguien de un remitente clave que manda reclamos o modificaciones: ofrecer que sus correos creen trámites solos
+      if (!auto && k.kind === 'solicitud' && coincide(m.from, remitentes()) && tipoDeCorreo(m)) acts += btn('auto-sumar', m.id, `Que sus correos creen trámites solos`, 'ghost', 'sparkle', `data-v="${esc(m.from)}"`);
       pill = varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>`
         : k.kind === 'solicitud' ? `<span class="pill ${auto ? 'warn' : 'info'}">${auto ? 'Para revisar' : 'Nueva solicitud'}</span>`
         : `<span class="pill ${{ numero: 'gold', pago: 'ok', info: '' }[k.kind]}">${{ numero: 'Número de reclamo', pago: 'Pago disponible', info: 'Ya registrado' }[k.kind]}</span>`;
@@ -2042,6 +2088,15 @@ async function mailAction(act, id, el) {
   if (act === 'mail-tramite') {
     let docs = [];
     try { docs = await importAttachments(m, clienteNombre(k.clienteId)); } catch (e) { toast('No se copiaron los adjuntos: ' + e.message, 'err'); }
+    if (k.estado) { // aviso de la aseguradora de algo que no estaba registrado: se crea con sus datos
+      const cv = k.campos || {};
+      const tt = norm(cv.tipo);
+      const tipoE = !k.estado.otros ? 'Reclamo' : /inclu/.test(tt) ? 'Inclusión' : /exclu/.test(tt) ? 'Exclusión' : /renov/.test(tt) ? 'Renovación' : /emisi/.test(tt) ? 'Emisión' : 'Modificación';
+      const pid = k.polizaId || '';
+      openTramite(null, { clienteId: k.clienteId || poliza(pid)?.clienteId || '', polizaId: pid, aseguradora: k.aseguradora || '', tipo: tipoE, asunto: cv.tipo ? nombrePropio(cv.tipo).replace(/^(\S+)/, w => w) : m.subject || '', descripcion: resumenCuerpo(m, 400), asegurado: cv.asegurado ? nombrePropio(cv.asegurado) : '', numeroReclamo: k.reclamo || '', etapa: k.reclamo ? 'numero' : 'ingresado', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), fechaIngreso: (m.fecha || nowISO()).slice(0, 10), canal: CANALES[0], gmailId: m.id, hilo: m.raiz || '' });
+      cur.afterSave = async t => { await markMail(id, `Trámite ${t.codigo} (desde aviso de ${k.aseguradora})`, t.id); };
+      return;
+    }
     const tipo = /renova/i.test(m.subject + m.snippet) ? 'Renovación' : /exclu/i.test(m.subject + m.snippet) ? 'Exclusión' : /inclu/i.test(m.subject + m.snippet) ? 'Inclusión' : /modific|cambio/i.test(m.subject + m.snippet) ? 'Modificación' : 'Reclamo';
     openTramite(null, { clienteId: k.clienteId || '', polizaId: k.polizaId || '', aseguradora: k.aseguradora || poliza(k.polizaId)?.aseguradora || '', tipo, asunto: m.subject || '', descripcion: m.snippet || '', docs, hilo: m.raiz || '', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), gmailId: m.id, monto: k.kind === 'solicitud' ? '' : '' });
     cur.afterSave = async t => { await markMail(id, `Trámite ${t.codigo}`, t.id); };
@@ -2470,12 +2525,26 @@ function sinCita(txt) {
 }
 const resumenCuerpo = (m, n = 280) => { const s = sinCita(m.body || m.snippet || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
+// Campos que SISA pone en sus notificaciones (Póliza:, Cliente:/Contratante:, Asegurado:, Tipo de trámite:, Código Referencia:)
+function camposAviso(txt) {
+  const t = String(txt || '');
+  const g = re => { const x = t.match(re); return x ? limpiar(x[1]).slice(0, 90) : ''; };
+  return {
+    poliza: g(/P[oó]liza\s*(?:No\.?|N[°º])?\s*:\s*([A-Z0-9][A-Z0-9._-]*[A-Z0-9])/i),
+    cliente: g(/(?:Cliente|Contratante)\s*:\s*([^\n]+?)(?=\s{2,}|\s+Asegurado\s*:|\s+Tipo de|\n|$)/i).replace(/[\s.]+$/, ''),
+    asegurado: g(/Asegurado\s*(?:\(\s*afectado\s*\))?\s*:\s*([^\n]+?)(?=\s{2,}|\s+Estimad|\s+P[oó]liza|\n|$)/i),
+    tipo: g(/Tipo\s+de\s+tr[aá]mite\s*:\s*([^\n]+?)(?=\s+Observaci|\n|$)/i),
+    referencia: ((t.match(/C[oó]digo\s+(?:de\s+)?Referencia\s*:\s*([A-Z0-9][A-Z0-9._-]*[A-Z0-9])/i) || t.match(/bajo\s+la\s+referencia\s*:?\s*([A-Z0-9][A-Z0-9._-]*[A-Z0-9])/i) || [])[1] || '').toUpperCase()
+  };
+}
+
 const ESTADOS_CORREO = [
   { etapa: 'rechazado', n: 'Reclamo rechazado', re: /reclamos?.{0,25}(rechazad|declinad|no\s+procede)|rechazo\s+de(l)?\s+reclamo/, soloAsunto: true },
   { etapa: 'requerido', n: 'Solicitud de información', re: /solicitud\s+de\s+(informacion|documenta|documentos)|requerimiento\s+de\s+(informacion|documentos)|informacion\s+(adicional|pendiente|faltante)|documentos?\s+(pendientes?|faltantes?|adicionales?)/ },
   { etapa: 'pago', forma: 'Cheque', n: 'Cheque disponible', re: /cheques?\s+(esta[n]?\s+|se\s+encuentra[n]?\s+)?disponibles?|disponibles?.{0,40}cheques?/ },
   { etapa: 'pago', forma: 'Transferencia', n: 'Pago por transferencia', re: /notificacion\s+de\s+pago|pago.{0,40}transferencia|transferencia.{0,40}(realizada|aplicada|efectuada|a\s+la\s+cuenta)|abono\s+(a|en)\s+(su\s+)?cuenta|aviso\s+de\s+(deposito|transferencia)/ },
   { etapa: 'analisis', n: 'Reclamo en análisis', re: /reclamos?\s+en\s+(analisis|revision)|en\s+(proceso\s+de\s+)?analisis/ },
+  { etapa: 'numero', n: 'Trámite registrado', otros: true, re: /tramite\s+registrado|registrado\s+bajo\s+la\s+referencia|su\s+informacion\s+ha\s+sido\s+recibida/ },
   { etapa: 'numero', n: 'Aviso de reclamo', re: /aviso\s+de\s+reclamo|registro\s+de(l)?\s+(su\s+)?reclamos?|reclamos?\s+(ha\s+sido\s+|fue\s+)?registrad|confirm\w*\s+(el\s+)?registro/ }
 ];
 
@@ -2487,7 +2556,7 @@ function estadoDeCorreo(m, aseg) {
 }
 
 // Todos los códigos que podrían ser números de reclamo
-const codigosEn = txt => [...new Set((String(txt).match(/[A-Z0-9][A-Z0-9-]{4,}/gi) || []).filter(x => /\d/.test(x)).map(x => norm(x).replace(/-+$/, '')))];
+const codigosEn = txt => [...new Set((String(txt).match(/[A-Z0-9][A-Z0-9._-]{4,}/gi) || []).filter(x => /\d/.test(x)).map(x => norm(x).replace(/[-.]+$/, '')))];
 
 // ¿Aparece este nombre en el texto? (al menos 2 palabras y 2/3 del nombre)
 function nombreEn(nombre, set) {
@@ -2517,19 +2586,32 @@ function tramiteParaEstado(m, k) {
   if (porNum.length === 1) return { t: porNum[0], por: 'número' };
   const h = tramitePorHilo(m.raiz);
   if (h) return { t: h, por: 'conversación' };
-  const set = new Set(tokens(txt));
+  const cv = k.campos || camposAviso(txt);
+  // Nombre: el campo "Asegurado:" si viene; si no, todo el texto
+  const set = new Set(tokens(cv.asegurado || txt));
+  const pol = polizaPorNumero(cv.poliza);
+  const cli = cv.cliente ? clientePorNombre(cv.cliente, txt) : null;
   const deAseg = t => !k.aseguradora || !t.aseguradora || norm(t.aseguradora) === norm(k.aseguradora) || norm(t.aseguradora).includes(norm(k.aseguradora)) || norm(k.aseguradora).includes(norm(t.aseguradora));
-  const soloReclamos = k.estado?.etapa !== 'requerido';
-  const cands = DB.tramites.filter(t => tramiteAbierto(t) && deAseg(t) && (!soloReclamos || t.tipo === 'Reclamo') && (k.estado?.etapa !== 'numero' || !t.numeroReclamo) && (k.estado?.etapa !== 'pago' || t.etapa !== 'recibido'));
+  const e = k.estado || {};
+  // Aviso de reclamo, análisis, cheque → reclamos; "Trámite registrado" → modificaciones, inclusiones…
+  const tipoOk = t => e.otros ? t.tipo !== 'Reclamo' : e.etapa === 'requerido' ? true : t.tipo === 'Reclamo';
+  const cands = DB.tramites.filter(t => tramiteAbierto(t) && deAseg(t) && tipoOk(t) && (e.etapa !== 'numero' || !t.numeroReclamo) && (e.etapa !== 'pago' || t.etapa !== 'recibido'));
   const puntos = cands.map(t => {
-    let s = Math.max(nombreEn(t.paciente, set), nombreEn(t.asegurado, set), nombreEn(clienteNombre(t.clienteId), set) * 0.8);
-    if (s && k.monto && +t.monto === +k.monto) s += 0.5;
-    const p = poliza(t.polizaId);
-    if (s && p && cods.includes(norm(p.numero))) s += 0.3;
+    const nom = Math.max(nombreEn(t.paciente, set), nombreEn(t.asegurado, set), nombreEn(clienteNombre(t.clienteId), set) * 0.8);
+    const dePol = pol && t.polizaId === pol.id, deCli = cli && t.clienteId === cli.id;
+    let s = nom;
+    if (e.otros) { // trámites que no son reclamo: por cliente o póliza, y el tipo de trámite para desempatar
+      if (!dePol && !deCli) return { t, s: 0 };
+      s = (dePol ? 0.6 : 0) + (deCli ? 0.4 : 0) + (cv.tipo ? parecido(cv.tipo, `${t.tipo} ${t.asunto} ${t.descripcion}`) * 0.5 : 0);
+    } else if (nom) {
+      if (dePol) s += 0.4; else if (deCli) s += 0.2;
+      if (k.monto && +t.monto === +k.monto) s += 0.5;
+      if (pol && t.polizaId && !dePol) s -= 0.6; // otra póliza: casi seguro no es
+    }
     return { t, s };
   }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   if (!puntos.length) return null;
-  if (puntos.length === 1 || puntos[0].s - puntos[1].s >= 0.3) return { t: puntos[0].t, por: 'nombre' };
+  if (puntos.length === 1 || puntos[0].s - puntos[1].s >= 0.3) return { t: puntos[0].t, por: e.otros ? 'cliente y póliza' : 'nombre' };
   return { dudas: puntos.slice(0, 6).map(x => x.t) };
 }
 
@@ -2537,8 +2619,24 @@ function tramiteParaEstado(m, k) {
 async function aplicarEstado(m, k, t0, auto = false) {
   const e = k.estado, aseg = k.aseguradora || t0.aseguradora || 'La aseguradora';
   const pref = auto ? 'Automático · ' : '';
+  if (e.etapa === 'pago' && !(+k.monto > 0) && (m.attachments || []).some(esPdf)) {
+    // SISA no pone el monto en el correo; viene en la carta de liquidación adjunta
+    const mm = await montoDeAdjuntos(m).catch(() => 0);
+    if (mm) k.monto = mm;
+  }
+  if (e.etapa === 'pago' && !(+k.monto > 0)) {
+    // Sin monto: el trámite pasa a Pago disponible y en Inicio queda "Registra el cheque"
+    const t = structuredClone(t0);
+    if (!tramiteAbierto(t)) return null;
+    if (!t.numeroReclamo && k.reclamo) t.numeroReclamo = k.reclamo;
+    const mueve = t.etapa !== 'pago';
+    if (mueve) t.etapa = 'pago';
+    t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: mueve ? 'etapa' : 'correo', ...(mueve ? { a: 'pago', correo: true } : {}), auto, texto: `${aseg}: ${e.n}${k.reclamo ? ' · ' + k.reclamo : ''}. El correo no trae el monto: registra el ${e.forma === 'Cheque' ? 'cheque' : 'pago'} cuando lo tengas.` }];
+    await save('tramites', t, `${t.codigo}: ${e.n} (falta el monto)`, mueve ? 'movió' : undefined);
+    await markMail(m.id, `${pref}${t.codigo} → ${e.n} (falta el monto)`, t.id, auto ? 'auto' : 'procesado');
+    return t;
+  }
   if (e.etapa === 'pago') {
-    if (!(+k.monto > 0)) return null; // sin monto, se registra a mano
     const ya = DB.pagos.find(p => p.tramiteId === t0.id && Math.abs(+p.monto - +k.monto) < 0.01);
     if (ya) { await markMail(m.id, `${pref}${t0.codigo}: pago ya estaba registrado`, t0.id, auto ? 'auto' : 'procesado'); return t0; }
     const pg = { id: '', tramiteId: t0.id, clienteId: t0.clienteId, aseguradora: t0.aseguradora || k.aseguradora, forma: e.forma, numero: k.numero || '', banco: '', monto: +k.monto, fechaAviso: (m.fecha || nowISO()).slice(0, 10), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: e.forma === 'Cheque' ? 'disponible' : 'depositado', notas: `${m.subject || ''}${auto ? ' (registrado solo desde el correo)' : ''}` };
@@ -2553,6 +2651,7 @@ async function aplicarEstado(m, k, t0, auto = false) {
   }
   const t = structuredClone(t0);
   const cambios = [];
+  if (!t.aseguradora && k.aseguradora) t.aseguradora = k.aseguradora;
   if (k.reclamo && !t.numeroReclamo && e.etapa !== 'rechazado' && !DB.tramites.some(x => x.id !== t.id && norm(x.numeroReclamo) === norm(k.reclamo))) { t.numeroReclamo = k.reclamo; cambios.push('número ' + k.reclamo); }
   const destino = e.etapa === 'numero' ? (t.numeroReclamo ? 'numero' : 'ingresado') : e.etapa;
   const puede = !tramiteAbierto(t) ? false
@@ -2618,6 +2717,23 @@ async function textosPdf(m) {
   if (S.mode === 'demo') return pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
   return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || [];
 }
+// El monto a pagar en una carta de liquidación
+async function montoDeAdjuntos(m) {
+  const textos = await textosPdf(m);
+  for (const re of [/(a\s+pagar|reembolso|liquid|neto|total\s+pagado|valor\s+del\s+cheque)/i, /total/i]) {
+    for (const x of textos) {
+      const l = String(x.texto || '').split('\n').find(l => re.test(l) && montoDe(l));
+      if (l) return montoDe(l);
+    }
+  }
+  return 0;
+}
+// La aseguradora que se nombra en el formulario ("SISA VIDA, S.A.")
+function aseguradoraEnTexto(txt) {
+  const t = norm(txt);
+  const x = asegDominios().find(a => a.nombre && new RegExp(`(^|[^a-z])${norm(a.nombre).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(t));
+  return x?.nombre || '';
+}
 const responsableDe = m => { const c = (m.cuentas || [m.cuenta]).find(x => S.users.some(u => u.email === x)); return c || S.me.email; };
 
 /* Correo nuevo de un remitente automático → trámite(s) */
@@ -2639,9 +2755,10 @@ async function crearAuto(m, k) {
       if (st.tramiteId) continue; // ese reclamo ya estaba registrado
       if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
       if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombrePropio(st.clienteTxt).replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.');
-      await asegurarEntidades(st, poliza(st.polizaId)?.aseguradora || '');
+      const asegF = poliza(st.polizaId)?.aseguradora || aseguradoraEnTexto(x.f.texto) || '';
+      await asegurarEntidades(st, asegF);
       const suyos = docs.filter(d => d.partId === x.ref || d.id === 'demo-' + x.ref);
-      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || '', origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
+      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || asegF, origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
       nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
       await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
       hechos.push(nt);
@@ -2667,7 +2784,7 @@ async function crearAuto(m, k) {
 async function autoCorreo(m) {
   const k = classify(m);
   if (k.estado) {
-    if (!k.tramiteId || (k.estado.etapa === 'pago' && !(+k.monto > 0))) return null;
+    if (!k.tramiteId) return null;
     if (extraer(m).rows.length > 1) return null; // varios reclamos en un aviso: mejor revisarlo
     return aplicarEstado(m, k, tramite(k.tramiteId), true);
   }
@@ -3049,6 +3166,13 @@ document.addEventListener('click', async e => {
       cur.row.docs.splice(i, 1); el.closest('.doc').remove();
       $$('[data-act=doc-del]', drawerEl()).forEach((b, j) => b.dataset.i = j);
       toast('Quitado. Pulsa Guardar para confirmar.');
+      break;
+    }
+    case 'pago-de-tramite': { const t = tramite(id); if (t) newPagoFromTramite(t); break; }
+    case 'auto-sumar': {
+      const v = [...autoRemitentes(), el.dataset.v].join(', ');
+      try { await save('ajustes', { ...(DB.ajustes.find(a => a.id === 'auto-remitentes') || {}), id: 'auto-remitentes', valor: v }, `Crean trámites solos: ${el.dataset.v}`); } catch (e) { break; }
+      render(false); toast(`Los correos nuevos de ${el.dataset.v} se volverán trámites solos`);
       break;
     }
     case 'mail-tramite': case 'mail-numero': case 'mail-pago': case 'mail-skip': case 'mail-volver': case 'mail-estado': case 'mail-novedad': mailAction(act, id, el); break;

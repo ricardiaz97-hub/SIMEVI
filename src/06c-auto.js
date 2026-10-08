@@ -19,12 +19,26 @@ function sinCita(txt) {
 }
 const resumenCuerpo = (m, n = 280) => { const s = sinCita(m.body || m.snippet || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
+// Campos que SISA pone en sus notificaciones (Póliza:, Cliente:/Contratante:, Asegurado:, Tipo de trámite:, Código Referencia:)
+function camposAviso(txt) {
+  const t = String(txt || '');
+  const g = re => { const x = t.match(re); return x ? limpiar(x[1]).slice(0, 90) : ''; };
+  return {
+    poliza: g(/P[oó]liza\s*(?:No\.?|N[°º])?\s*:\s*([A-Z0-9][A-Z0-9._-]*[A-Z0-9])/i),
+    cliente: g(/(?:Cliente|Contratante)\s*:\s*([^\n]+?)(?=\s{2,}|\s+Asegurado\s*:|\s+Tipo de|\n|$)/i).replace(/[\s.]+$/, ''),
+    asegurado: g(/Asegurado\s*(?:\(\s*afectado\s*\))?\s*:\s*([^\n]+?)(?=\s{2,}|\s+Estimad|\s+P[oó]liza|\n|$)/i),
+    tipo: g(/Tipo\s+de\s+tr[aá]mite\s*:\s*([^\n]+?)(?=\s+Observaci|\n|$)/i),
+    referencia: ((t.match(/C[oó]digo\s+(?:de\s+)?Referencia\s*:\s*([A-Z0-9][A-Z0-9._-]*[A-Z0-9])/i) || t.match(/bajo\s+la\s+referencia\s*:?\s*([A-Z0-9][A-Z0-9._-]*[A-Z0-9])/i) || [])[1] || '').toUpperCase()
+  };
+}
+
 const ESTADOS_CORREO = [
   { etapa: 'rechazado', n: 'Reclamo rechazado', re: /reclamos?.{0,25}(rechazad|declinad|no\s+procede)|rechazo\s+de(l)?\s+reclamo/, soloAsunto: true },
   { etapa: 'requerido', n: 'Solicitud de información', re: /solicitud\s+de\s+(informacion|documenta|documentos)|requerimiento\s+de\s+(informacion|documentos)|informacion\s+(adicional|pendiente|faltante)|documentos?\s+(pendientes?|faltantes?|adicionales?)/ },
   { etapa: 'pago', forma: 'Cheque', n: 'Cheque disponible', re: /cheques?\s+(esta[n]?\s+|se\s+encuentra[n]?\s+)?disponibles?|disponibles?.{0,40}cheques?/ },
   { etapa: 'pago', forma: 'Transferencia', n: 'Pago por transferencia', re: /notificacion\s+de\s+pago|pago.{0,40}transferencia|transferencia.{0,40}(realizada|aplicada|efectuada|a\s+la\s+cuenta)|abono\s+(a|en)\s+(su\s+)?cuenta|aviso\s+de\s+(deposito|transferencia)/ },
   { etapa: 'analisis', n: 'Reclamo en análisis', re: /reclamos?\s+en\s+(analisis|revision)|en\s+(proceso\s+de\s+)?analisis/ },
+  { etapa: 'numero', n: 'Trámite registrado', otros: true, re: /tramite\s+registrado|registrado\s+bajo\s+la\s+referencia|su\s+informacion\s+ha\s+sido\s+recibida/ },
   { etapa: 'numero', n: 'Aviso de reclamo', re: /aviso\s+de\s+reclamo|registro\s+de(l)?\s+(su\s+)?reclamos?|reclamos?\s+(ha\s+sido\s+|fue\s+)?registrad|confirm\w*\s+(el\s+)?registro/ }
 ];
 
@@ -36,7 +50,7 @@ function estadoDeCorreo(m, aseg) {
 }
 
 // Todos los códigos que podrían ser números de reclamo
-const codigosEn = txt => [...new Set((String(txt).match(/[A-Z0-9][A-Z0-9-]{4,}/gi) || []).filter(x => /\d/.test(x)).map(x => norm(x).replace(/-+$/, '')))];
+const codigosEn = txt => [...new Set((String(txt).match(/[A-Z0-9][A-Z0-9._-]{4,}/gi) || []).filter(x => /\d/.test(x)).map(x => norm(x).replace(/[-.]+$/, '')))];
 
 // ¿Aparece este nombre en el texto? (al menos 2 palabras y 2/3 del nombre)
 function nombreEn(nombre, set) {
@@ -66,19 +80,32 @@ function tramiteParaEstado(m, k) {
   if (porNum.length === 1) return { t: porNum[0], por: 'número' };
   const h = tramitePorHilo(m.raiz);
   if (h) return { t: h, por: 'conversación' };
-  const set = new Set(tokens(txt));
+  const cv = k.campos || camposAviso(txt);
+  // Nombre: el campo "Asegurado:" si viene; si no, todo el texto
+  const set = new Set(tokens(cv.asegurado || txt));
+  const pol = polizaPorNumero(cv.poliza);
+  const cli = cv.cliente ? clientePorNombre(cv.cliente, txt) : null;
   const deAseg = t => !k.aseguradora || !t.aseguradora || norm(t.aseguradora) === norm(k.aseguradora) || norm(t.aseguradora).includes(norm(k.aseguradora)) || norm(k.aseguradora).includes(norm(t.aseguradora));
-  const soloReclamos = k.estado?.etapa !== 'requerido';
-  const cands = DB.tramites.filter(t => tramiteAbierto(t) && deAseg(t) && (!soloReclamos || t.tipo === 'Reclamo') && (k.estado?.etapa !== 'numero' || !t.numeroReclamo) && (k.estado?.etapa !== 'pago' || t.etapa !== 'recibido'));
+  const e = k.estado || {};
+  // Aviso de reclamo, análisis, cheque → reclamos; "Trámite registrado" → modificaciones, inclusiones…
+  const tipoOk = t => e.otros ? t.tipo !== 'Reclamo' : e.etapa === 'requerido' ? true : t.tipo === 'Reclamo';
+  const cands = DB.tramites.filter(t => tramiteAbierto(t) && deAseg(t) && tipoOk(t) && (e.etapa !== 'numero' || !t.numeroReclamo) && (e.etapa !== 'pago' || t.etapa !== 'recibido'));
   const puntos = cands.map(t => {
-    let s = Math.max(nombreEn(t.paciente, set), nombreEn(t.asegurado, set), nombreEn(clienteNombre(t.clienteId), set) * 0.8);
-    if (s && k.monto && +t.monto === +k.monto) s += 0.5;
-    const p = poliza(t.polizaId);
-    if (s && p && cods.includes(norm(p.numero))) s += 0.3;
+    const nom = Math.max(nombreEn(t.paciente, set), nombreEn(t.asegurado, set), nombreEn(clienteNombre(t.clienteId), set) * 0.8);
+    const dePol = pol && t.polizaId === pol.id, deCli = cli && t.clienteId === cli.id;
+    let s = nom;
+    if (e.otros) { // trámites que no son reclamo: por cliente o póliza, y el tipo de trámite para desempatar
+      if (!dePol && !deCli) return { t, s: 0 };
+      s = (dePol ? 0.6 : 0) + (deCli ? 0.4 : 0) + (cv.tipo ? parecido(cv.tipo, `${t.tipo} ${t.asunto} ${t.descripcion}`) * 0.5 : 0);
+    } else if (nom) {
+      if (dePol) s += 0.4; else if (deCli) s += 0.2;
+      if (k.monto && +t.monto === +k.monto) s += 0.5;
+      if (pol && t.polizaId && !dePol) s -= 0.6; // otra póliza: casi seguro no es
+    }
     return { t, s };
   }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   if (!puntos.length) return null;
-  if (puntos.length === 1 || puntos[0].s - puntos[1].s >= 0.3) return { t: puntos[0].t, por: 'nombre' };
+  if (puntos.length === 1 || puntos[0].s - puntos[1].s >= 0.3) return { t: puntos[0].t, por: e.otros ? 'cliente y póliza' : 'nombre' };
   return { dudas: puntos.slice(0, 6).map(x => x.t) };
 }
 
@@ -86,8 +113,24 @@ function tramiteParaEstado(m, k) {
 async function aplicarEstado(m, k, t0, auto = false) {
   const e = k.estado, aseg = k.aseguradora || t0.aseguradora || 'La aseguradora';
   const pref = auto ? 'Automático · ' : '';
+  if (e.etapa === 'pago' && !(+k.monto > 0) && (m.attachments || []).some(esPdf)) {
+    // SISA no pone el monto en el correo; viene en la carta de liquidación adjunta
+    const mm = await montoDeAdjuntos(m).catch(() => 0);
+    if (mm) k.monto = mm;
+  }
+  if (e.etapa === 'pago' && !(+k.monto > 0)) {
+    // Sin monto: el trámite pasa a Pago disponible y en Inicio queda "Registra el cheque"
+    const t = structuredClone(t0);
+    if (!tramiteAbierto(t)) return null;
+    if (!t.numeroReclamo && k.reclamo) t.numeroReclamo = k.reclamo;
+    const mueve = t.etapa !== 'pago';
+    if (mueve) t.etapa = 'pago';
+    t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: mueve ? 'etapa' : 'correo', ...(mueve ? { a: 'pago', correo: true } : {}), auto, texto: `${aseg}: ${e.n}${k.reclamo ? ' · ' + k.reclamo : ''}. El correo no trae el monto: registra el ${e.forma === 'Cheque' ? 'cheque' : 'pago'} cuando lo tengas.` }];
+    await save('tramites', t, `${t.codigo}: ${e.n} (falta el monto)`, mueve ? 'movió' : undefined);
+    await markMail(m.id, `${pref}${t.codigo} → ${e.n} (falta el monto)`, t.id, auto ? 'auto' : 'procesado');
+    return t;
+  }
   if (e.etapa === 'pago') {
-    if (!(+k.monto > 0)) return null; // sin monto, se registra a mano
     const ya = DB.pagos.find(p => p.tramiteId === t0.id && Math.abs(+p.monto - +k.monto) < 0.01);
     if (ya) { await markMail(m.id, `${pref}${t0.codigo}: pago ya estaba registrado`, t0.id, auto ? 'auto' : 'procesado'); return t0; }
     const pg = { id: '', tramiteId: t0.id, clienteId: t0.clienteId, aseguradora: t0.aseguradora || k.aseguradora, forma: e.forma, numero: k.numero || '', banco: '', monto: +k.monto, fechaAviso: (m.fecha || nowISO()).slice(0, 10), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: e.forma === 'Cheque' ? 'disponible' : 'depositado', notas: `${m.subject || ''}${auto ? ' (registrado solo desde el correo)' : ''}` };
@@ -102,6 +145,7 @@ async function aplicarEstado(m, k, t0, auto = false) {
   }
   const t = structuredClone(t0);
   const cambios = [];
+  if (!t.aseguradora && k.aseguradora) t.aseguradora = k.aseguradora;
   if (k.reclamo && !t.numeroReclamo && e.etapa !== 'rechazado' && !DB.tramites.some(x => x.id !== t.id && norm(x.numeroReclamo) === norm(k.reclamo))) { t.numeroReclamo = k.reclamo; cambios.push('número ' + k.reclamo); }
   const destino = e.etapa === 'numero' ? (t.numeroReclamo ? 'numero' : 'ingresado') : e.etapa;
   const puede = !tramiteAbierto(t) ? false
@@ -167,6 +211,23 @@ async function textosPdf(m) {
   if (S.mode === 'demo') return pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
   return (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || [];
 }
+// El monto a pagar en una carta de liquidación
+async function montoDeAdjuntos(m) {
+  const textos = await textosPdf(m);
+  for (const re of [/(a\s+pagar|reembolso|liquid|neto|total\s+pagado|valor\s+del\s+cheque)/i, /total/i]) {
+    for (const x of textos) {
+      const l = String(x.texto || '').split('\n').find(l => re.test(l) && montoDe(l));
+      if (l) return montoDe(l);
+    }
+  }
+  return 0;
+}
+// La aseguradora que se nombra en el formulario ("SISA VIDA, S.A.")
+function aseguradoraEnTexto(txt) {
+  const t = norm(txt);
+  const x = asegDominios().find(a => a.nombre && new RegExp(`(^|[^a-z])${norm(a.nombre).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(t));
+  return x?.nombre || '';
+}
 const responsableDe = m => { const c = (m.cuentas || [m.cuenta]).find(x => S.users.some(u => u.email === x)); return c || S.me.email; };
 
 /* Correo nuevo de un remitente automático → trámite(s) */
@@ -188,9 +249,10 @@ async function crearAuto(m, k) {
       if (st.tramiteId) continue; // ese reclamo ya estaba registrado
       if (!st.clienteId && clienteId) { st.clienteId = clienteId; st.clienteTxt = clienteNombre(clienteId); }
       if (!st.clienteId && st.clienteTxt) st.clienteTxt = nombrePropio(st.clienteTxt).replace(/\bS\.?\s*a\.?\s+de\s+c\.?\s*v\.?/i, 'S.A. de C.V.');
-      await asegurarEntidades(st, poliza(st.polizaId)?.aseguradora || '');
+      const asegF = poliza(st.polizaId)?.aseguradora || aseguradoraEnTexto(x.f.texto) || '';
+      await asegurarEntidades(st, asegF);
       const suyos = docs.filter(d => d.partId === x.ref || d.id === 'demo-' + x.ref);
-      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || '', origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
+      const nt = nuevoReclamo(st, { etapa: 'recibido', fecha, gmailId: m.id, docs: suyos.length ? suyos : docs, aseguradora: poliza(st.polizaId)?.aseguradora || asegF, origen: `Recibido por correo de ${quien}. SIMEVI lo creó solo leyendo el formulario del PDF.` });
       nt.hilo = m.raiz || ''; nt.responsable = responsableDe(m); nt.eventos[0].auto = true;
       await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))} › ${nt.asegurado} (automático)`);
       hechos.push(nt);
@@ -216,7 +278,7 @@ async function crearAuto(m, k) {
 async function autoCorreo(m) {
   const k = classify(m);
   if (k.estado) {
-    if (!k.tramiteId || (k.estado.etapa === 'pago' && !(+k.monto > 0))) return null;
+    if (!k.tramiteId) return null;
     if (extraer(m).rows.length > 1) return null; // varios reclamos en un aviso: mejor revisarlo
     return aplicarEstado(m, k, tramite(k.tramiteId), true);
   }
