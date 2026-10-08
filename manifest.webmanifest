@@ -1,0 +1,15 @@
+{
+  "name": "SIMEVI Seguros",
+  "short_name": "SIMEVI",
+  "description": "Trámites, reclamos, pólizas y pagos de SIMEVI Corredores de Seguros.",
+  "start_url": "/#/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060B10",
+  "theme_color": "#060B10",
+  "lang": "es",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

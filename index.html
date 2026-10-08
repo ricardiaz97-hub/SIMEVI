@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SIMEVI Seguros</title>
+<meta name="description" content="Trámites, reclamos, pólizas y pagos de SIMEVI Corredores de Seguros.">
+<meta name="theme-color" content="#060B10">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=Noto+Serif+Display:wght@400&display=swap" rel="stylesheet">
+<script>
+/* Modo ligero: teléfonos con poca memoria, ahorro de datos, ?lite o el interruptor de Ajustes */
+(function(){try{
+  var q=location.search.indexOf('lite')>-1, s=localStorage.getItem('simevi-lite');
+  var auto=(navigator.deviceMemory&&navigator.deviceMemory<=3)||(navigator.connection&&navigator.connection.saveData);
+  if(q||s==='1'||(s!=='0'&&auto))document.documentElement.classList.add('lite');
+}catch(e){}})();
+</script>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="sky" aria-hidden="true"><div class="stars"></div><div class="ring"></div><div class="grain"></div></div>
+<!--ICONS-->
+<div id="root"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

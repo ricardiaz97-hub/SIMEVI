@@ -1,0 +1,5 @@
+{
+  "rewrites": [{ "source": "/c/:t", "destination": "/index.html" }],
+  "functions": { "api/**/*.js": { "maxDuration": 30 } },
+  "headers": [{ "source": "/(.*)", "headers": [{ "key": "Referrer-Policy", "value": "same-origin" }, { "key": "X-Content-Type-Options", "value": "nosniff" }] }]
+}
