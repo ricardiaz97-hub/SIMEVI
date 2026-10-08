@@ -63,6 +63,14 @@ Google mostrará "Google no verificó esta app": pulsa *Configuración avanzada 
 
 Si algo no conecta, abre `https://TU-DOMINIO/api/diagnose`: revisa cada paso y dice qué falta, sin mostrar secretos.
 
+## Reclamos de pólizas colectivas (como INJIBOA)
+
+En la pestaña **Reclamos** el orden es **Cliente (la empresa) → Póliza → Asegurado (el empleado) → Paciente** si es un dependiente. En pólizas individuales el asegurado es el mismo cliente.
+
+No hace falta cargar todo antes: si el cliente, la póliza o el empleado no existen, se crean al guardar el reclamo y queda anotado en la bitácora.
+
+**Lectura de PDFs:** en la Bandeja, los correos con PDF tienen el botón **Leer reclamos del PDF**. Google Drive saca el texto del escaneo y la app busca los formularios de reclamo (contratante, póliza, afiliado, certificado, asegurado afectado, parentesco y total). Si el PDF trae varios formularios salen varias filas; lo demás que venga escaneado (recetas, facturas) se ignora. También funciona al adjuntar un PDF en la fila de Reclamos. Google lee hasta unas 10 páginas por PDF.
+
 ## Uso diario
 
 1. Llega una solicitud al correo → **Bandeja → Crear trámite**. Los PDFs se copian solos a Drive.

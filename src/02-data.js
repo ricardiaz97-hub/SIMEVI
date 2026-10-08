@@ -1,5 +1,5 @@
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v4';
+const DEMO_KEY = 'simevi-demo-v5';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -177,6 +177,7 @@ function seedDemo() {
 
   const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '') => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body });
   const inbox = [
+    mail('m9', 0, 10, 'mbonilla@injiboa.com.sv', 'Marta Bonilla (INJIBOA)', 'Reclamos gastos médicos semana 40', 'Buenos días, adjunto reclamos de gastos médicos de empleados para su trámite con la aseguradora. Saludos cordiales.', [{ id: 'a9', name: 'Reclamos semana 40.pdf', size: 1840000, mime: 'application/pdf', ocr: "CONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) AUGUSTO CESAR MARTINEZ BONILLA CERTIFICADO No.: 117\nASEGURADO:\n(Afectado) ADRIANA REBECA MARTINEZ JIMENEZ PARENTESCO: HIJA\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR HONORARIOS MÉDICOS US$15.00\n1 Factura(s) DE FARMACIA (Adjunto recetas) US$26.25\nTOTAL DE LA RECLAMACIÓN US$41.25\nINFORME MÉDICO SI NO Dr.: Teresa Ester Cea de Orellana\nNOMBRE: JUAN FRANCISCO CARRILLO MENDOZA\nCARGO: Encargado de Planillas/RRHH, INJIBOA, S.A. de C.V.\n\nFARMACIA SAN NICOLAS Factura 0045123 Acetaminofén 500 mg x 20 US$ 4.75 Amoxicilina 500 mg x 21 US$ 21.50\nRECETA MÉDICA Dra. Teresa Cea de Orellana Paciente: Adriana Martínez Indicaciones: tomar cada 8 horas\n\nCONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) JOSE MAURICIO LANDAVERDE FLORES CERTIFICADO No.: 203\nASEGURADO:\n(Afectado) JOSE MAURICIO LANDAVERDE FLORES PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR SERVICIOS DE LABORATORIO US$38.00\n1 Factura(s) POR HONORARIOS MÉDICOS US$30.00\nTOTAL DE LA RECLAMACIÓN US$68.00\nINFORME MÉDICO SI NO Dr.: Carlos Ernesto Rivas Alas" }]),
     mail('m7', 0, 9, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Reembolsos de gastos médicos de septiembre', 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American…', [
       { id: 'a6', name: 'Reembolso Karla Ventura.pdf', size: 410000, mime: 'application/pdf' },
       { id: 'a7', name: 'Reembolso Luis Pineda.pdf', size: 655000, mime: 'application/pdf' },

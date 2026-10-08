@@ -131,6 +131,8 @@ function tramiteHTML(t, isNew) {
           ${fld('Aseguradora', inp('aseguradora', t.aseguradora, 'text', 'list="dl-aseg"'))}
           ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente"'))}
           ${fld('N.º de certificado', inp('certificado', t.certificado))}
+          ${fld('Paciente (si es dependiente)', inp('paciente', t.paciente))}
+          ${fld('Parentesco', `<select name="parentesco">${opt(PARENTESCOS, t.parentesco, 'Sin parentesco')}</select>`)}
           ${fld('Asunto', inp('asunto', t.asunto, 'text', 'placeholder="Ej.: Reembolso de medicamentos de octubre"'), 'full')}
           ${fld('Detalle', `<textarea name="descripcion" placeholder="Lo que pidió el cliente">${esc(t.descripcion)}</textarea>`, 'full')}
         </div>

@@ -118,7 +118,7 @@ const nextCodigo = () => {
 };
 
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v4';
+const DEMO_KEY = 'simevi-demo-v5';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -296,6 +296,7 @@ function seedDemo() {
 
   const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '') => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body });
   const inbox = [
+    mail('m9', 0, 10, 'mbonilla@injiboa.com.sv', 'Marta Bonilla (INJIBOA)', 'Reclamos gastos médicos semana 40', 'Buenos días, adjunto reclamos de gastos médicos de empleados para su trámite con la aseguradora. Saludos cordiales.', [{ id: 'a9', name: 'Reclamos semana 40.pdf', size: 1840000, mime: 'application/pdf', ocr: "CONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) AUGUSTO CESAR MARTINEZ BONILLA CERTIFICADO No.: 117\nASEGURADO:\n(Afectado) ADRIANA REBECA MARTINEZ JIMENEZ PARENTESCO: HIJA\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR HONORARIOS MÉDICOS US$15.00\n1 Factura(s) DE FARMACIA (Adjunto recetas) US$26.25\nTOTAL DE LA RECLAMACIÓN US$41.25\nINFORME MÉDICO SI NO Dr.: Teresa Ester Cea de Orellana\nNOMBRE: JUAN FRANCISCO CARRILLO MENDOZA\nCARGO: Encargado de Planillas/RRHH, INJIBOA, S.A. de C.V.\n\nFARMACIA SAN NICOLAS Factura 0045123 Acetaminofén 500 mg x 20 US$ 4.75 Amoxicilina 500 mg x 21 US$ 21.50\nRECETA MÉDICA Dra. Teresa Cea de Orellana Paciente: Adriana Martínez Indicaciones: tomar cada 8 horas\n\nCONTRATANTE: INGENIO CENTRAL AZUCARERO JIBOA, S.A. DE C.V.\nPÓLIZA No.: SALC-507549 FECHA: 06 DE OCTUBRE DEL 2026\nAFILIADO:\n(Empleado) JOSE MAURICIO LANDAVERDE FLORES CERTIFICADO No.: 203\nASEGURADO:\n(Afectado) JOSE MAURICIO LANDAVERDE FLORES PARENTESCO: TITULAR\nSE REMITEN LOS SIGUIENTES DOCUMENTOS\n1 Factura(s) POR SERVICIOS DE LABORATORIO US$38.00\n1 Factura(s) POR HONORARIOS MÉDICOS US$30.00\nTOTAL DE LA RECLAMACIÓN US$68.00\nINFORME MÉDICO SI NO Dr.: Carlos Ernesto Rivas Alas" }]),
     mail('m7', 0, 9, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Reembolsos de gastos médicos de septiembre', 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American…', [
       { id: 'a6', name: 'Reembolso Karla Ventura.pdf', size: 410000, mime: 'application/pdf' },
       { id: 'a7', name: 'Reembolso Luis Pineda.pdf', size: 655000, mime: 'application/pdf' },
@@ -496,7 +497,7 @@ function render(animate) {
     window.scrollTo(0, 0);
   } else v.classList.remove('enter');
   lastRoute = S.route;
-  if (S.route === 'reclamos') syncEntry();
+  if (S.route === 'reclamos') syncRow(RX);
   if (keepFocus) { const el = document.getElementById(keepFocus); if (el) { el.focus(); try { el.setSelectionRange(sel, sel); } catch (e) { } } }
   document.title = (ROUTES.find(r => r.k === S.route)?.n || 'Buscar') + ' · SIMEVI';
   const more = $('.mob-more'); if (more) more.style.display = matchMedia('(max-width:760px)').matches ? '' : 'none';
@@ -731,6 +732,8 @@ function tramiteHTML(t, isNew) {
           ${fld('Aseguradora', inp('aseguradora', t.aseguradora, 'text', 'list="dl-aseg"'))}
           ${fld('Asegurado', inp('asegurado', t.asegurado, 'text', 'placeholder="Si es distinto del cliente"'))}
           ${fld('N.º de certificado', inp('certificado', t.certificado))}
+          ${fld('Paciente (si es dependiente)', inp('paciente', t.paciente))}
+          ${fld('Parentesco', `<select name="parentesco">${opt(PARENTESCOS, t.parentesco, 'Sin parentesco')}</select>`)}
           ${fld('Asunto', inp('asunto', t.asunto, 'text', 'placeholder="Ej.: Reembolso de medicamentos de octubre"'), 'full')}
           ${fld('Detalle', `<textarea name="descripcion" placeholder="Lo que pidió el cliente">${esc(t.descripcion)}</textarea>`, 'full')}
         </div>
@@ -859,14 +862,123 @@ function popMenu(anchor, items, onPick) {
   m.querySelector('button')?.focus();
 }
 
-/* ---------- Reclamos: tabla rápida de ingreso ----------
-   Una fila arriba para escribir el reclamo nuevo. Nombre, póliza y certificado son listas
-   en las que se puede escribir: buscan mientras escribes y llenan lo demás solas. */
+/* ---------- Lector de formularios de reclamo ----------
+   Recibe el texto que Google Drive saca de un PDF escaneado y encuentra los formularios
+   de reclamo ("CONTRATANTE / PÓLIZA / AFILIADO / CERTIFICADO / ASEGURADO / TOTAL").
+   Lo demás que venga escaneado (recetas, facturas sueltas) se ignora. */
 
-const RX_BLANK = () => ({ asegurado: '', clienteId: '', polizaId: '', certificado: '', numero: '', notas: '', docs: [], etapa: 'ingresado', picked: '' });
-let RX = RX_BLANK();
-try { const d = JSON.parse(sessionStorage.getItem('simevi-rx') || 'null'); if (d) RX = { ...RX_BLANK(), ...d }; } catch (e) { }
-const rxKeep = () => { try { sessionStorage.setItem('simevi-rx', JSON.stringify(RX)); } catch (e) { } };
+const MESES = { enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12 };
+const PARENTESCOS = ['Titular', 'Cónyuge', 'Hijo(a)', 'Padre/Madre', 'Otro'];
+
+const limpiar = s => String(s || '').replace(/[_|‘’'`"“”]+/g, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s.:;,\-]+|[\s.:;,\-]+$/g, '').trim();
+const nombrePropio = s => limpiar(s).toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|Y)\b/g, w => w.toLowerCase());
+const tokens = s => norm(s).replace(/[^a-z0-9ñ ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['de', 'del', 'la', 'las', 'los', 'sa', 'cv', 'y'].includes(w));
+
+function fechaISO(s) {
+  const t = norm(s);
+  let m = t.match(/(\d{1,2})\s+de\s+([a-z]+)\s+de[l]?\s+(\d{4})/);
+  if (m && MESES[m[2]]) return `${m[3]}-${String(MESES[m[2]]).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  m = t.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);
+  if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  return '';
+}
+
+// "US$41.25", "USS41.25" (el OCR confunde $ con S), "$ 1,320.00"
+function montoDe(s) {
+  const m = String(s).match(/US\s*[S$]?\s*\$?\s*(\d[\d,]*[.,]\d{2})\b/i) || String(s).match(/\$\s*(\d[\d,]*[.,]\d{2})\b/);
+  if (!m) return '';
+  return +m[1].replace(/[.,](?=\d{3}\b)/g, '').replace(',', '.');
+}
+
+function conceptoBonito(s) {
+  let c = limpiar(String(s).replace(/^[^a-z]*?(?=factura|otros)/i, '').replace(/factura\s*\(?s?\)?/i, '').replace(/US\s*[S$8]?\s*\$?\s*[\d.,]+/gi, '').replace(/\(.*?\)/g, ''));
+  c = c.toLowerCase().replace(/^(por\s+)?(servicios\s+)?(de\s+)?/, '');
+  return c ? c[0].toUpperCase() + c.slice(1) : '';
+}
+
+function leerBloque(b) {
+  const g = re => { const m = b.match(re); return m ? limpiar(m[1]) : ''; };
+  const f = {};
+  f.contratante = g(/CONTRATANTE\s*[:;]\s*([^\n]+)/i);
+  f.poliza = ((b.match(/P[OÓ]LIZA\s*N[oº°.]*\s*[:;]?[\s_]*([A-Z]{1,6}[-\s]?[A-Z0-9]*\d[A-Z0-9-]*)/i) || [])[1] || '').replace(/\s/g, '').replace(/[.\-]+$/, '').toUpperCase();
+  f.fecha = fechaISO(g(/FECHA\s*[:;]?\s*([^\n]+)/i));
+  f.afiliado = nombrePropio(g(/\(\s*Empleado\s*\)\s*[:;]?\s*([^\n]+?)(?=\s+CERTIFICADO|\n|$)/i) || g(/AFILIADO\s*[:;]\s*([A-ZÁÉÍÓÚÑ][^\n(]+?)(?=\s+CERTIFICADO|\n|$)/i));
+  f.certificado = g(/CERTIFICADO\s*N?[oº°.]*\s*[:;]?\s*([A-Z0-9][A-Z0-9-]*)/i);
+  f.paciente = nombrePropio(g(/\(\s*Afectado\s*\)\s*[:;]?\s*([^\n]+?)(?=\s+PARENTESCO|\n|$)/i));
+  const par = g(/PARENTESCO\s*[:;]?\s*([A-ZÁÉÍÓÚÑa-z()]+)/i).toLowerCase();
+  f.parentesco = /hij/.test(par) ? 'Hijo(a)' : /espos|c[oó]nyug/.test(par) ? 'Cónyuge' : /padre|madre/.test(par) ? 'Padre/Madre' : /titular|mism/.test(par) ? 'Titular' : par ? 'Otro' : '';
+  const tl = b.match(/TOTAL\s*DE\s*LA\s*RECLAMACI[OÓ]N[^\n]*/i) || b.match(/TOTAL\s*DELA\s*RECLAMACI[OÓ]N[^\n]*/i);
+  f.total = tl ? montoDe(tl[0]) : '';
+  f.conceptos = b.split('\n').filter(l => /^\s*[\dIil|]*\s*(factura\s*\(?s?\)?|otros)\b/i.test(l) && !/total/i.test(l)).map(l => ({ concepto: conceptoBonito(l), monto: montoDe(l) })).filter(c => c.monto);
+  if (!f.total && f.conceptos.length) f.total = Math.round(f.conceptos.reduce((a, c) => a + c.monto, 0) * 100) / 100;
+  f.doctor = nombrePropio(g(/Dr[a]?\.?\s*[:;]\s*([^\n]+)/i));
+  f.notas = [f.conceptos.map(c => `${c.concepto} ${fmtMoney(c.monto)}`).join(', '), f.doctor ? `Dr. ${f.doctor}` : ''].filter(Boolean).join(' · ');
+  f.puntos = [f.certificado, f.afiliado, f.paciente, f.total, f.poliza].filter(Boolean).length;
+  f.texto = b;
+  return f;
+}
+
+/* Devuelve los formularios de reclamo encontrados en el texto (puede haber varios). */
+function leerFormularios(texto) {
+  const t = String(texto || '').replace(/\r/g, '');
+  const idx = [...t.matchAll(/CONTRATANTE\s*[:;]/gi)].map(m => m.index);
+  const bloques = idx.length ? idx.map((i, k) => t.slice(i, idx[k + 1] ?? t.length)) : [t];
+  return bloques.map(leerBloque).filter(f => f.puntos >= 3);
+}
+
+function parecido(a, b) {
+  const x = tokens(a), y = tokens(b);
+  if (!x.length || !y.length) return 0;
+  const comun = x.filter(w => y.includes(w)).length;
+  return comun / Math.min(x.length, y.length);
+}
+
+// El contratante del formulario contra los clientes registrados ("INGENIO … JIBOA" ↔ "INJIBOA")
+function clientePorNombre(nombre, textoCompleto = '') {
+  let mejor = null, nota = 0;
+  for (const c of DB.clientes) {
+    let s = parecido(c.nombre, nombre);
+    const corto = tokens(c.nombre)[0];
+    // Nombres cortos de empresa ("INJIBOA") que aparecen en el sello o la firma del formulario
+    if (s < 0.6 && c.tipo === 'Empresa' && tokens(c.nombre).length <= 2 && corto && corto.length >= 5 && tokens(textoCompleto).includes(corto)) s = 0.7;
+    if (s > nota) { nota = s; mejor = c; }
+  }
+  return nota >= 0.6 ? mejor : null;
+}
+
+/* Un formulario leído se convierte en una fila para revisar, ya ligada a lo que exista. */
+function filaDeFormulario(f, docRef) {
+  const st = filaNueva({
+    asegurado: f.afiliado, certificado: f.certificado,
+    paciente: f.paciente && parecido(f.paciente, f.afiliado) < 0.8 ? f.paciente : '',
+    parentesco: f.paciente && parecido(f.paciente, f.afiliado) < 0.8 ? f.parentesco : '',
+    monto: f.total ? f.total.toFixed(2) : '', notas: f.notas, docs: docRef ? [docRef] : [], polizaTxt: f.poliza, clienteTxt: f.contratante, fecha: f.fecha
+  });
+  const p = f.poliza && DB.polizas.find(x => norm(x.numero).replace(/\s/g, '') === norm(f.poliza));
+  if (p) { st.polizaId = p.id; st.clienteId = p.clienteId; st.clienteTxt = clienteNombre(p.clienteId); }
+  else { const c = clientePorNombre(f.contratante, f.texto); if (c) { st.clienteId = c.id; st.clienteTxt = c.nombre; } }
+  const pp = poliza(st.polizaId);
+  if (pp) {
+    const a = (pp.asegurados || []).find(a => (f.certificado && String(a.certificado) === String(f.certificado)) || parecido(a.nombre, f.afiliado) >= 0.75);
+    if (a) { st.asegurado = a.nombre; st.certificado = a.certificado || st.certificado; }
+  }
+  st.picked = st.asegurado;
+  // ¿Ya está registrado este mismo reclamo?
+  const dup = DB.tramites.find(t => t.tipo === 'Reclamo' && tramiteAbierto(t) && st.clienteId && t.clienteId === st.clienteId &&
+    parecido(t.asegurado, st.asegurado) >= 0.8 && (!st.monto || !t.monto || +t.monto === +st.monto) && (!st.paciente || parecido(t.paciente, st.paciente) >= 0.8));
+  if (dup) st.tramiteId = dup.id;
+  return st;
+}
+
+/* ---------- Reclamos: tabla rápida de ingreso ----------
+   Orden de trabajo: Cliente (la empresa) → Póliza → Asegurado (empleado) → Paciente si es dependiente.
+   En pólizas individuales el asegurado es el mismo cliente.
+   Si el cliente, la póliza o el asegurado no existen, se crean al guardar (y queda en la bitácora). */
+
+const filaNueva = (o = {}) => ({ clienteId: '', clienteTxt: '', polizaId: '', polizaTxt: '', asegurado: '', certificado: '', paciente: '', parentesco: '', monto: '', numero: '', notas: '', docs: [], tramiteId: '', cheque: '', etapa: 'ingresado', picked: '', fecha: '', ...o });
+let RX = filaNueva();
+try { const d = JSON.parse(sessionStorage.getItem('simevi-rx2') || 'null'); if (d) RX = filaNueva(d); } catch (e) { }
+const rxKeep = () => { try { sessionStorage.setItem('simevi-rx2', JSON.stringify(RX)); } catch (e) { } };
 
 const shortName = n => String(n || '').split(',')[0];
 const words = q => norm(q).split(/\s+/).filter(Boolean);
@@ -886,70 +998,100 @@ function mark(label, q) {
   [...label].forEach((ch, i) => { if (hits[i] && !open) { out += '<mark>'; open = true; } if (!hits[i] && open) { out += '</mark>'; open = false; } out += esc(ch); });
   return out + (open ? '</mark>' : '');
 }
+const rank = (opts, q) => opts.map(o => ({ ...o, s: score(o.find, q) && score(o.find, q) + (o.bonus || 0) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
+const polizasActivas = cid => DB.polizas.filter(p => p.clienteId === cid && !p.cancelada);
+const esColectiva = st => { const p = poliza(st.polizaId); return p ? p.modalidad === 'Colectiva' : !!(st.asegurado && (st.clienteTxt || st.clienteId) && norm(st.asegurado) !== norm(st.clienteTxt || clienteNombre(st.clienteId))); };
 
 /* Opciones de cada lista */
+const asegOpc = p => (p.asegurados || []).filter(a => a.nombre && !/planilla|anexo/i.test(a.nombre)).map(a => ({ kind: 'aseg', label: a.nombre, sub: `Cert. ${a.certificado || '-'} · ${p.numero} · ${shortName(clienteNombre(p.clienteId))}`, find: `${a.nombre} ${a.documento} ${a.certificado}`, clienteId: p.clienteId, polizaId: p.id, certificado: a.certificado || '', bonus: p.ramo === 'Gastos médicos' ? 0.5 : 0 }));
 const CB = {
-  nombre(q) {
-    const opts = [];
-    DB.polizas.filter(p => p.modalidad === 'Colectiva' && !p.cancelada).forEach(p => (p.asegurados || []).forEach(a => {
-      if (!a.nombre) return;
-      opts.push({ kind: 'aseg', label: a.nombre, sub: `Cert. ${a.certificado || '-'} · ${p.numero} · ${shortName(clienteNombre(p.clienteId))}`, find: `${a.nombre} ${a.documento} ${a.certificado}`, clienteId: p.clienteId, polizaId: p.id, certificado: a.certificado || '', bonus: p.ramo === 'Gastos médicos' ? 0.5 : 0 });
-    }));
-    DB.clientes.forEach(c => {
-      const n = DB.polizas.filter(p => p.clienteId === c.id && !p.cancelada).length;
-      opts.push({ kind: 'cli', label: c.nombre, sub: `${c.tipo} · ${n} ${n === 1 ? 'póliza' : 'pólizas'}`, find: `${c.nombre} ${c.documento}`, clienteId: c.id });
-    });
-    if (!q) {
-      const recent = [...new Set(DB.tramites.filter(t => t.tipo === 'Reclamo').map(t => t.asegurado || clienteNombre(t.clienteId)))].slice(0, 6);
-      return recent.map(n => opts.find(o => o.label === n)).filter(Boolean);
-    }
-    return opts.map(o => ({ ...o, s: score(o.find, q) && score(o.find, q) + (o.bonus || 0) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
+  cliente(q) {
+    const opts = DB.clientes.map(c => { const n = polizasActivas(c.id).length; return { kind: 'cli', label: c.nombre, sub: `${c.tipo} · ${n} ${n === 1 ? 'póliza' : 'pólizas'}`, find: `${c.nombre} ${c.documento} ${c.correo}`, clienteId: c.id }; });
+    if (!q) { const rec = [...new Set(DB.tramites.filter(t => t.tipo === 'Reclamo').map(t => t.clienteId))].slice(0, 6); return rec.map(id => opts.find(o => o.clienteId === id)).filter(Boolean); }
+    return rank(opts, q);
   },
   poliza(q, st = RX) {
-    return DB.polizas.filter(p => !p.cancelada && (!st.clienteId || p.clienteId === st.clienteId))
-      .map(p => ({ kind: 'pol', label: p.numero, sub: `${p.ramo} · ${p.aseguradora} · ${shortName(clienteNombre(p.clienteId))}`, find: `${p.numero} ${p.ramo} ${p.aseguradora} ${clienteNombre(p.clienteId)}`, polizaId: p.id, clienteId: p.clienteId }))
-      .map(o => ({ ...o, s: score(o.find, q) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
+    return rank(DB.polizas.filter(p => !p.cancelada && (!st.clienteId || p.clienteId === st.clienteId))
+      .map(p => ({ kind: 'pol', label: p.numero, sub: `${p.modalidad} · ${p.ramo} · ${p.aseguradora} · ${shortName(clienteNombre(p.clienteId))}`, find: `${p.numero} ${p.ramo} ${p.aseguradora} ${clienteNombre(p.clienteId)}`, polizaId: p.id, clienteId: p.clienteId })), q);
+  },
+  asegurado(q, st = RX) {
+    const p = poliza(st.polizaId);
+    let opts;
+    if (p && p.modalidad === 'Colectiva') opts = asegOpc(p);
+    else if (st.clienteId) opts = polizasActivas(st.clienteId).filter(x => x.modalidad === 'Colectiva').flatMap(asegOpc).concat([{ kind: 'cli', label: clienteNombre(st.clienteId), sub: 'El mismo cliente', find: clienteNombre(st.clienteId), clienteId: st.clienteId }]);
+    else opts = DB.polizas.filter(x => x.modalidad === 'Colectiva' && !x.cancelada).flatMap(asegOpc).concat(DB.clientes.filter(c => c.tipo === 'Persona').map(c => ({ kind: 'cli', label: c.nombre, sub: `Cliente · ${polizasActivas(c.id).length} pólizas`, find: `${c.nombre} ${c.documento}`, clienteId: c.id })));
+    if (!q) return opts.slice(0, 8);
+    return rank(opts, q);
   },
   cert(q, st = RX) {
     const p = poliza(st.polizaId);
-    return (p?.asegurados || []).filter(a => a.certificado || a.nombre)
-      .map(a => ({ kind: 'cert', label: a.certificado || '-', sub: a.nombre, find: `${a.certificado} ${a.nombre} ${a.documento}`, nombre: a.nombre }))
-      .map(o => ({ ...o, s: score(o.find, q) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
+    return rank((p?.asegurados || []).filter(a => a.certificado || a.nombre)
+      .map(a => ({ kind: 'cert', label: a.certificado || '-', sub: a.nombre, find: `${a.certificado} ${a.nombre} ${a.documento}`, nombre: a.nombre })), q);
   }
 };
 
+function setCliente(st, id) {
+  st.clienteId = id; st.clienteTxt = clienteNombre(id);
+  const ps = polizasActivas(id);
+  if (!ps.some(p => p.id === st.polizaId)) { st.polizaId = ps.length === 1 ? ps[0].id : ''; st.polizaTxt = ''; }
+  const p = poliza(st.polizaId);
+  if (p && p.modalidad === 'Individual') { st.asegurado = st.clienteTxt; st.certificado = ''; }
+  else if (p && st.asegurado && !(p.asegurados || []).some(a => norm(a.nombre) === norm(st.asegurado)) && norm(st.asegurado) === norm(st.picked)) { st.asegurado = ''; st.certificado = ''; }
+}
 function pick(name, o, st = RX) {
-  if (name === 'nombre') {
-    st.asegurado = o.label; st.picked = o.label; st.clienteId = o.clienteId;
-    if (o.kind === 'aseg') { st.polizaId = o.polizaId; st.certificado = o.certificado; }
-    else {
-      const ps = DB.polizas.filter(p => p.clienteId === o.clienteId && !p.cancelada);
-      if (!ps.some(p => p.id === st.polizaId)) st.polizaId = ps.length === 1 ? ps[0].id : '';
-    }
-  }
+  if (name === 'cliente') setCliente(st, o.clienteId);
   if (name === 'poliza') {
-    st.polizaId = o.polizaId;
-    if (st.clienteId !== o.clienteId) { st.clienteId = o.clienteId; if (!st.asegurado || st.picked !== st.asegurado) { st.asegurado = clienteNombre(o.clienteId); st.picked = st.asegurado; } }
+    if (st.clienteId !== o.clienteId) setCliente(st, o.clienteId);
+    st.polizaId = o.polizaId; st.polizaTxt = '';
+    const p = poliza(o.polizaId);
+    if (p?.modalidad === 'Individual') { st.asegurado = clienteNombre(p.clienteId); st.certificado = ''; }
   }
-  if (name === 'cert') { st.certificado = o.label; if (!st.asegurado || st.asegurado === clienteNombre(st.clienteId)) { st.asegurado = o.nombre; st.picked = o.nombre; } }
-  if (st === RX) { rxKeep(); syncEntry(); } else syncMx(st);
+  if (name === 'asegurado') {
+    if (o.kind === 'aseg') { if (st.clienteId !== o.clienteId) setCliente(st, o.clienteId); st.polizaId = o.polizaId; st.polizaTxt = ''; st.asegurado = o.label; st.certificado = o.certificado; }
+    else { if (st.clienteId !== o.clienteId) setCliente(st, o.clienteId); st.asegurado = o.label; }
+    st.picked = st.asegurado;
+  }
+  if (name === 'cert') { st.certificado = o.label; st.asegurado = o.nombre; st.picked = o.nombre; }
+  if (st === RX) rxKeep();
+  syncRow(st);
 }
 
-/* Pinta en la fila de ingreso lo que ya se sabe */
-function syncEntry() {
-  const row = $('#rx-new'); if (!row) return;
-  const p = poliza(RX.polizaId);
-  const set = (id, v) => { const el = $('#' + id, row); if (el && document.activeElement !== el) el.value = v; };
-  set('rx-nombre', RX.asegurado);
-  set('rx-poliza', p ? p.numero : (RX.polizaTxt || ''));
-  set('rx-cert', RX.certificado);
-  $('#rx-hint', row).innerHTML = RX.clienteId
-    ? `${ic('check-circle')}<span>${esc(shortName(clienteNombre(RX.clienteId)))}${p ? ` · ${esc(p.ramo)} · ${esc(p.aseguradora)}` : ''}</span>`
-    : `<span class="faint">Escribe un nombre, DUI o número de póliza</span>`;
-  $('#rx-hint', row).classList.toggle('ok', !!RX.clienteId);
-  $('#rx-docs-n', row).textContent = RX.docs.length ? RX.docs.length : '';
-  $('#rx-pdf', row).classList.toggle('has', RX.docs.length > 0);
-  $('#rx-pdf', row).title = RX.docs.map(d => d.name).join('\n') || 'Adjuntar PDF';
+/* Qué se sabe de la fila y qué se va a crear */
+function hintFila(st) {
+  const c = cliente(st.clienteId), p = poliza(st.polizaId);
+  const partes = [], nuevos = [];
+  if (c) partes.push(shortName(c.nombre)); else if (st.clienteTxt) nuevos.push(`cliente “${shortName(st.clienteTxt)}”`);
+  if (p) partes.push(`${p.numero} · ${p.ramo}${p.aseguradora ? ' · ' + p.aseguradora : ''}`); else if (st.polizaTxt) nuevos.push(`póliza ${st.polizaTxt}`);
+  if (st.asegurado && esColectiva(st)) {
+    partes.push(`${shortName(st.asegurado)}${st.certificado ? ` (cert. ${st.certificado})` : ''}`);
+    if (!p || !(p.asegurados || []).some(a => norm(a.nombre) === norm(st.asegurado))) nuevos.push(`asegurado en la póliza`);
+  }
+  if (st.paciente) partes.push(`paciente ${st.paciente}${st.parentesco ? ` (${st.parentesco.toLowerCase()})` : ''}`);
+  const estado = !c && !st.clienteTxt ? 'bad' : nuevos.length ? 'new' : 'ok';
+  const html = estado === 'bad' ? `${ic('warning')}<span>Escribe el cliente (la empresa) o la póliza</span>`
+    : `${ic(estado === 'ok' ? 'check-circle' : 'sparkle')}<span>${esc(partes.join(' › ') || 'Cliente nuevo')}</span>${nuevos.length ? `<span class="pill gold">Se creará: ${esc(nuevos.join(', '))}</span>` : ''}`;
+  return { estado, html };
+}
+
+const rowEl = st => st === RX ? $('#rx-new') : (MX && MX.rows.includes(st) ? $(`[data-mx="${MX.rows.indexOf(st)}"]`) : null);
+const rowState = el => { const r = el?.closest?.('[data-row]'); if (!r) return null; return r.dataset.row === 'rx' ? RX : MX?.rows[+r.dataset.mx]; };
+
+function syncRow(st) {
+  const row = rowEl(st); if (!row) return;
+  const p = poliza(st.polizaId);
+  const set = (sel, v) => { const el = $(sel, row); if (el && document.activeElement !== el) el.value = v ?? ''; };
+  set('[data-cb=cliente] input', st.clienteId ? clienteNombre(st.clienteId) : st.clienteTxt);
+  set('[data-cb=poliza] input', p ? p.numero : st.polizaTxt);
+  set('[data-cb=asegurado] input', st.asegurado);
+  set('[data-cb=cert] input', st.certificado);
+  ['paciente', 'parentesco', 'monto', 'numero', 'notas', 'cheque'].forEach(k => set(`[data-f=${k}]`, st[k]));
+  const h = hintFila(st), box = $('.row-hint', row);
+  if (box) { box.innerHTML = h.html; box.dataset.estado = h.estado; }
+  row.classList.toggle('bad', h.estado === 'bad' && row.dataset.row === 'mx');
+  const pdf = $('.rx-pdf', row);
+  if (pdf && st === RX) { $('.rx-n', pdf).textContent = RX.docs.length || ''; pdf.classList.toggle('has', RX.docs.length > 0); pdf.title = RX.docs.map(d => d.name).join('\n') || 'Adjuntar PDF (se lee solo)'; }
+  const aseg = $('[data-cb=asegurado] input', row);
+  if (aseg) aseg.placeholder = p?.modalidad === 'Individual' ? 'El mismo cliente' : 'Empleado o asegurado';
 }
 
 const comboHTML = (name, id, label, val, ph) => `
@@ -960,6 +1102,76 @@ const comboHTML = (name, id, label, val, ph) => `
     <ul class="cb-list card" id="${id}-list" role="listbox" hidden></ul>
   </div>`;
 
+/* Las casillas de una fila de reclamo (se usan en la tabla y en la revisión de correos) */
+function campos(st, pre) {
+  const p = poliza(st.polizaId);
+  const inp2 = (k, ph, extra = '') => `<label class="sr" for="${pre}-${k}">${ph}</label><input id="${pre}-${k}" type="text" value="${esc(st[k] ?? '')}" placeholder="${esc(ph)}" data-f="${k}" ${extra}>`;
+  return {
+    cliente: `<div class="rx-cell" data-l="Cliente">${comboHTML('cliente', `${pre}-cliente`, 'Cliente o empresa', st.clienteId ? clienteNombre(st.clienteId) : st.clienteTxt, 'Cliente o empresa')}</div>`,
+    poliza: `<div class="rx-cell" data-l="Póliza">${comboHTML('poliza', `${pre}-poliza`, 'Póliza', p ? p.numero : st.polizaTxt, 'Póliza')}</div>`,
+    asegurado: `<div class="rx-cell" data-l="Asegurado">${comboHTML('asegurado', `${pre}-asegurado`, 'Asegurado o empleado', st.asegurado, p?.modalidad === 'Individual' ? 'El mismo cliente' : 'Empleado o asegurado')}</div>`,
+    cert: `<div class="rx-cell" data-l="Cert.">${comboHTML('cert', `${pre}-cert`, 'Número de certificado', st.certificado, 'Cert.')}</div>`,
+    paciente: `<div class="rx-cell" data-l="Paciente">${inp2('paciente', 'Paciente si es dependiente')}</div>`,
+    parentesco: `<div class="rx-cell" data-l="Parentesco"><label class="sr" for="${pre}-parentesco">Parentesco</label><select id="${pre}-parentesco" data-f="parentesco">${opt(PARENTESCOS, st.parentesco, 'Parentesco')}</select></div>`,
+    monto: `<div class="rx-cell" data-l="Monto">${inp2('monto', 'Monto US$', 'inputmode="decimal"')}</div>`,
+    numero: `<div class="rx-cell" data-l="N.º de reclamo">${inp2('numero', 'N.º de reclamo (opcional)')}</div>`,
+    notas: `<div class="rx-cell rx-notes" data-l="Notas">${inp2('notas', 'Qué se reclama')}</div>`,
+    cheque: `<div class="rx-cell" data-l="Cheque o ref.">${inp2('cheque', 'N.º de cheque')}</div>`
+  };
+}
+
+/* Crea lo que falte (cliente, póliza, asegurado en la colectiva) antes de guardar el reclamo */
+async function asegurarEntidades(st, aseguradora = '') {
+  if (!st.clienteId) {
+    const nombre = limpiar(st.clienteTxt || '');
+    if (!nombre) throw new Error('Falta el cliente');
+    const ya = DB.clientes.find(c => norm(c.nombre) === norm(nombre)) || clientePorNombre(nombre);
+    if (ya) st.clienteId = ya.id;
+    else {
+      const empresa = /\b(s\.?\s*a\.?|s\.?a\.? de c\.?v\.?|ingenio|grupo|colegio|distribuidora|compa[nñ]|corporaci|asociaci|fundaci|cooperativa|banco|hospital|universidad)\b/i.test(nombre);
+      const c = { id: '', nombre, tipo: empresa ? 'Empresa' : 'Persona', documento: '', contacto: '', correo: '', telefono: '', notas: 'Creado desde un reclamo.', portal: token() };
+      await save('clientes', c, `${shortName(nombre)} (creado desde un reclamo)`);
+      st.clienteId = c.id;
+    }
+    st.clienteTxt = clienteNombre(st.clienteId);
+  }
+  if (!st.polizaId && limpiar(st.polizaTxt || '')) {
+    const num = limpiar(st.polizaTxt).toUpperCase();
+    const ya = DB.polizas.find(p => norm(p.numero).replace(/\s/g, '') === norm(num).replace(/\s/g, ''));
+    if (ya) st.polizaId = ya.id;
+    else {
+      const col = esColectiva(st) || cliente(st.clienteId)?.tipo === 'Empresa';
+      const p = { id: '', numero: num, aseguradora, ramo: 'Gastos médicos', modalidad: col ? 'Colectiva' : 'Individual', clienteId: st.clienteId, vigenciaDesde: '', vigenciaHasta: '', prima: '', frecuencia: 'Mensual', suma: '', cancelada: false, notas: 'Creada desde un reclamo. Completa vigencia y prima.', asegurados: [], docs: [] };
+      await save('polizas', p, `${num} (creada desde un reclamo)`);
+      st.polizaId = p.id;
+    }
+  }
+  const p = poliza(st.polizaId);
+  if (p && !p.aseguradora && aseguradora) { p.aseguradora = aseguradora; }
+  if (p && p.modalidad === 'Colectiva' && st.asegurado && norm(st.asegurado) !== norm(clienteNombre(st.clienteId))) {
+    const lista = p.asegurados || [];
+    const a = lista.find(a => norm(a.nombre) === norm(st.asegurado) || (st.certificado && a.certificado && String(a.certificado) === String(st.certificado)));
+    if (!a) { p.asegurados = [...lista, { nombre: st.asegurado, documento: '', certificado: st.certificado || '', plan: '' }]; await save('polizas', p, `${p.numero}: asegurado ${st.asegurado} agregado`); }
+    else if (st.certificado && !a.certificado) { a.certificado = st.certificado; await save('polizas', p, `${p.numero}: certificado ${st.certificado} de ${a.nombre}`); }
+  } else if (p && !p.aseguradora && aseguradora) await save('polizas', p, `${p.numero}: aseguradora ${aseguradora}`);
+  if (p?.modalidad === 'Individual' && !st.asegurado) st.asegurado = clienteNombre(st.clienteId);
+}
+
+function nuevoReclamo(st, { etapa = 'ingresado', fecha, gmailId = '', docs = [], aseguradora = '', origen = '' } = {}) {
+  const p = poliza(st.polizaId);
+  const e = st.numero ? 'numero' : etapa;
+  const quien = st.paciente || st.asegurado || shortName(clienteNombre(st.clienteId));
+  const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: origen || (e === 'recibido' ? 'Recibido.' : `Ingresado a ${p?.aseguradora || aseguradora || 'la aseguradora'}.`) }];
+  if (st.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${st.numero}.` });
+  return {
+    id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: st.clienteId, polizaId: st.polizaId, aseguradora: p?.aseguradora || aseguradora || '',
+    asegurado: st.asegurado || clienteNombre(st.clienteId), certificado: st.certificado, paciente: st.paciente, parentesco: st.paciente ? st.parentesco : '',
+    asunto: `Reclamo de ${shortName(quien)}`, descripcion: st.notas, canal: CANALES[0], etapa: e, numeroReclamo: st.numero, monto: toNum(st.monto) || '',
+    fechaSolicitud: fecha || todayISO(), fechaIngreso: e === 'recibido' ? '' : todayISO(), responsable: S.me.email, visibleCliente: true, notaCliente: '', docs, eventos: ev, gmailId
+  };
+}
+const toNum = s => +String(s ?? '').replace(/[^\d.,]/g, '').replace(/,(?=\d{3}\b)/g, '').replace(/,/g, '.') || 0;
+
 VIEWS.reclamos = () => {
   const f = S.f, q = norm(S.q);
   f.rxVer = f.rxVer || 'abiertos';
@@ -967,65 +1179,64 @@ VIEWS.reclamos = () => {
   const list = all.filter(t => {
     if (f.rxVer === 'abiertos' && !tramiteAbierto(t)) return false;
     if (f.rxVer === 'sinnum' && (t.numeroReclamo || !tramiteAbierto(t))) return false;
-    if (q && !norm([t.codigo, t.asegurado, clienteNombre(t.clienteId), poliza(t.polizaId)?.numero, t.certificado, t.numeroReclamo, t.descripcion].join(' ')).includes(q)) return false;
+    if (q && !norm([t.codigo, t.asegurado, t.paciente, clienteNombre(t.clienteId), poliza(t.polizaId)?.numero, t.certificado, t.numeroReclamo, t.descripcion].join(' ')).includes(q)) return false;
     return true;
   }).sort((a, b) => String(b.creado || '').localeCompare(String(a.creado || '')));
   const sinNum = all.filter(t => tramiteAbierto(t) && !t.numeroReclamo).length;
-  const p = poliza(RX.polizaId);
   const seg = [['abiertos', 'Abiertos'], ['sinnum', `Sin número${sinNum ? ' · ' + sinNum : ''}`], ['todos', 'Todos']];
+  const c = campos(RX, 'rx');
 
-  return head('Reclamos', 'Escribe en la primera fila y pulsa Enter. Nombre, póliza y certificado buscan mientras escribes y se llenan entre sí.') + `
+  return head('Reclamos', 'Cliente, póliza, asegurado y, si es un dependiente, el paciente. Las listas buscan mientras escribes; lo que no exista se crea al guardar. Si adjuntas el formulario en PDF, se llena solo.') + `
   <div class="rx-entry">
     <span class="rx-title">Nuevo reclamo</span>
-    <div class="rx-grid rx-head" aria-hidden="true"><span>Nombre</span><span>Póliza</span><span>Cert.</span><span>PDF</span><span>N.º de reclamo</span><span>Notas</span><span></span></div>
-    <form class="rx-grid rx-new" id="rx-new" autocomplete="off">
-      <div class="rx-cell" data-l="Nombre">${comboHTML('nombre', 'rx-nombre', 'Nombre del asegurado', RX.asegurado, 'Asegurado o cliente')}</div>
-      <div class="rx-cell" data-l="Póliza">${comboHTML('poliza', 'rx-poliza', 'Póliza', p ? p.numero : '', 'Póliza')}</div>
-      <div class="rx-cell" data-l="Certificado">${comboHTML('cert', 'rx-cert', 'Número de certificado', RX.certificado, 'Cert.')}</div>
-      <div class="rx-cell" data-l="PDF"><label class="btn icon rx-pdf" id="rx-pdf" title="Adjuntar PDF">${ic('paperclip')}<span id="rx-docs-n" class="rx-n"></span><input type="file" multiple accept="application/pdf,image/*" hidden data-rx-upload="new"></label></div>
-      <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="rx-num">Número de reclamo</label><input id="rx-num" type="text" value="${esc(RX.numero)}" placeholder="Opcional" data-rx="numero"></div>
-      <div class="rx-cell" data-l="Notas"><label class="sr" for="rx-notas">Notas</label><input id="rx-notas" type="text" value="${esc(RX.notas)}" placeholder="Qué se reclama" data-rx="notas"></div>
-      <div class="rx-cell rx-go"><button class="btn primary" type="submit" title="Agregar (Enter)">${ic('plus')}Agregar</button></div>
+    <form class="rx-new" id="rx-new" data-row="rx" autocomplete="off">
+      <div class="rx-l1">${c.cliente}${c.poliza}${c.asegurado}${c.cert}${c.paciente}${c.parentesco}</div>
+      <div class="rx-l2">${c.monto}${c.numero}${c.notas}
+        <div class="rx-cell" data-l="PDF"><label class="btn rx-pdf" title="Adjuntar PDF (se lee solo)">${ic('paperclip')}<span>PDF</span><span class="rx-n"></span><input type="file" multiple accept="application/pdf,image/*" hidden data-rx-upload="new"></label></div>
+        <div class="rx-cell rx-go"><button class="btn primary" type="submit" title="Agregar (Enter)">${ic('plus')}Agregar</button></div>
+      </div>
       <div class="rx-under">
-        <span class="rx-hint" id="rx-hint"></span>
-        <label class="rx-stage"><span>Queda como</span><select id="rx-etapa" data-rx="etapa">${opt([['recibido', 'Recibido (falta ingresar)'], ['ingresado', 'Ingresado a la aseguradora']], RX.etapa)}</select></label>
+        <span class="row-hint"></span>
+        <label class="rx-stage"><span>Queda como</span><select id="rx-etapa">${opt([['recibido', 'Recibido (falta ingresar)'], ['ingresado', 'Ingresado a la aseguradora']], RX.etapa)}</select></label>
         <button class="btn ghost sm" type="button" data-act="rx-clear">Limpiar</button>
       </div>
     </form>
   </div>
 
   <div class="toolbar" style="margin-top:18px">
-    <label class="search"><span class="sr">Buscar reclamos</span>${ic('magnifying-glass')}<input type="search" id="rxsearch" data-bind="q" placeholder="Nombre, póliza, certificado, número…" value="${esc(S.q)}"></label>
+    <label class="search"><span class="sr">Buscar reclamos</span>${ic('magnifying-glass')}<input type="search" id="rxsearch" data-bind="q" placeholder="Empresa, asegurado, paciente, póliza, número…" value="${esc(S.q)}"></label>
     <div class="seg" role="group" aria-label="Ver">${seg.map(([k, n]) => `<button type="button" data-act="filter" data-k="rxVer" data-v="${k}" aria-pressed="${f.rxVer === k}">${n}</button>`).join('')}</div>
   </div>
 
   <div class="panel rx">
-    ${list.length ? `<div class="rx-grid rx-head" aria-hidden="true"><span>Nombre</span><span>Póliza</span><span>Cert.</span><span>PDF</span><span>N.º de reclamo</span><span>Notas</span><span>Etapa</span></div>
+    ${list.length ? `<div class="rx-grid rx-head" aria-hidden="true"><span>Cliente › Asegurado</span><span>Póliza</span><span>Cert.</span><span>PDF</span><span>N.º de reclamo</span><span>Notas</span><span>Etapa</span></div>
     ${list.map(t => {
       const pp = poliza(t.polizaId);
-      const nombre = t.asegurado || clienteNombre(t.clienteId);
+      const cli = clienteNombre(t.clienteId);
+      const col = t.asegurado && norm(t.asegurado) !== norm(cli);
       return `<div class="rx-grid rx-row" data-id="${t.id}">
-        <div class="rx-cell" data-l="Nombre"><b>${esc(nombre)}</b>${nombre !== clienteNombre(t.clienteId) ? `<small>${esc(shortName(clienteNombre(t.clienteId)))}</small>` : `<small>${esc(t.codigo)} · ${fmtShort(t.fechaSolicitud)}</small>`}</div>
-        <div class="rx-cell" data-l="Póliza"><b class="tnum" style="font-weight:500">${esc(pp?.numero || '-')}</b><small>${esc(t.aseguradora || '')}</small></div>
-        <div class="rx-cell tnum" data-l="Certificado">${esc(t.certificado || '-')}</div>
+        <div class="rx-cell" data-l="Cliente">${col ? `<small class="rx-co">${esc(shortName(cli))}</small><b>${esc(t.asegurado)}</b>` : `<b>${esc(cli)}</b>`}<small>${t.paciente ? `Paciente: ${esc(t.paciente)}${t.parentesco ? ' (' + esc(t.parentesco.toLowerCase()) + ')' : ''}` : `${esc(t.codigo)} · ${fmtShort(t.fechaSolicitud)}`}</small></div>
+        <div class="rx-cell" data-l="Póliza"><b class="tnum" style="font-weight:500">${esc(pp?.numero || '-')}</b><small>${esc([t.aseguradora, t.monto ? fmtMoney(t.monto) : ''].filter(Boolean).join(' · '))}</small></div>
+        <div class="rx-cell tnum" data-l="Cert.">${esc(t.certificado || '-')}</div>
         <div class="rx-cell rx-docs" data-l="PDF">${(t.docs || []).length ? `<a class="rx-doc" href="${esc(docUrl(t.docs[0]))}" target="_blank" rel="noopener" title="${esc(t.docs.map(d => d.name).join('\n'))}" aria-label="Abrir ${esc(t.docs[0].name)}">${ic('file-pdf')}${t.docs.length > 1 ? `<sup>${t.docs.length}</sup>` : ''}</a>` : ''}<label class="rx-doc add" title="Agregar PDF" aria-label="Agregar PDF">${ic('plus')}<input type="file" multiple accept="application/pdf,image/*" hidden data-rx-upload="${t.id}"></label></div>
-        <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="rn-${t.id}">Número de reclamo de ${esc(nombre)}</label><input id="rn-${t.id}" type="text" class="rx-inline tnum" value="${esc(t.numeroReclamo || '')}" placeholder="Pendiente" data-rinline="numeroReclamo"></div>
-        <div class="rx-cell" data-l="Notas"><label class="sr" for="rt-${t.id}">Notas de ${esc(nombre)}</label><input id="rt-${t.id}" type="text" class="rx-inline" value="${esc(t.descripcion || '')}" placeholder="Agregar nota" data-rinline="descripcion"></div>
+        <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="rn-${t.id}">Número de reclamo</label><input id="rn-${t.id}" type="text" class="rx-inline tnum" value="${esc(t.numeroReclamo || '')}" placeholder="Pendiente" data-rinline="numeroReclamo"></div>
+        <div class="rx-cell" data-l="Notas"><label class="sr" for="rt-${t.id}">Notas</label><input id="rt-${t.id}" type="text" class="rx-inline" value="${esc(t.descripcion || '')}" placeholder="Agregar nota" data-rinline="descripcion"></div>
         <div class="rx-cell rx-end" data-l="Etapa"><button type="button" class="rx-stagebtn" data-act="open-tramite" data-id="${t.id}" title="Abrir ${esc(t.codigo)}">${etapaPill(t)}</button></div>
       </div>`;
-    }).join('')}` : `<div class="panel-b">${emptyState('first-aid', all.length ? 'Nada con estos filtros' : 'Aún no hay reclamos', all.length ? 'Prueba con “Todos”.' : 'Escribe el primero en la fila de arriba.')}</div>`}
+    }).join('')}` : `<div class="panel-b">${emptyState('first-aid', all.length ? 'Nada con estos filtros' : 'Aún no hay reclamos', all.length ? 'Prueba con “Todos”.' : 'Escribe el primero arriba o adjunta el formulario en PDF.')}</div>`}
   </div>`;
 };
 
 /* --- comportamiento de las listas (el estado vive en cada caja) --- */
 const finePointer = () => matchMedia('(hover:hover) and (pointer:fine)').matches;
-const cbState = box => { const r = box.closest('[data-mx]'); return r ? MX.rows[+r.dataset.mx] : RX; };
+const cbState = box => rowState(box) || RX;
 function cbOpen(input) {
   const box = input.closest('.cb'); const name = box.dataset.cb; const list = $('.cb-list', box);
   const v = input.value.trim(); const st = cbState(box);
   box._opts = CB[name](v, st); box._active = box._opts.length && v ? 0 : -1;
   if (!box._opts.length) {
-    list.innerHTML = v ? `<li class="cb-empty">Sin coincidencias${name === 'nombre' && st === RX ? `. <button type="button" data-act="rx-new-cliente">Crear cliente “${esc(v)}”</button>` : ''}</li>` : `<li class="cb-empty">${name === 'cert' ? (st.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
+    const nuevo = { cliente: `Cliente nuevo: se creará “${esc(v)}” al guardar`, poliza: `Póliza nueva: se creará “${esc(v)}” al guardar`, asegurado: `Asegurado nuevo: se agregará a la póliza al guardar`, cert: 'Certificado nuevo' }[name];
+    list.innerHTML = `<li class="cb-empty">${v ? nuevo : name === 'cert' ? (st.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
   } else list.innerHTML = box._opts.map((o, i) => `<li role="option" id="${input.id}-o${i}" data-i="${i}" aria-selected="${i === box._active}"><span class="cb-l">${mark(o.label, v)}</span><span class="cb-s">${mark(o.sub, v)}</span></li>`).join('');
   list.hidden = false; input.setAttribute('aria-expanded', 'true');
   input.setAttribute('aria-activedescendant', box._active >= 0 ? `${input.id}-o${box._active}` : '');
@@ -1052,11 +1263,12 @@ function cbAutoMatch(input) {
   const box = input.closest('.cb'); if (!box) return;
   const name = box.dataset.cb, v = input.value.trim(), st = cbState(box);
   if (!v) return;
-  if (name === 'nombre' && st.picked && norm(st.picked) === norm(v)) return;
+  if (name === 'asegurado' && st.picked && norm(st.picked) === norm(v)) return;
   const opts = CB[name](v, st);
-  const exact = opts.filter(o => norm(o.label) === norm(v) || (name === 'nombre' && o.find && norm(o.find).split(' ').includes(norm(v))));
+  const exact = opts.filter(o => norm(o.label) === norm(v) || (o.find && norm(o.find).split(' ').includes(norm(v))));
   const only = exact.length === 1 ? exact[0] : (opts.length === 1 && opts[0].s >= 4 ? opts[0] : null);
   if (only) { pick(name, only, st); input.value = only.label; }
+  else syncRow(st);
 }
 
 document.addEventListener('focusin', e => { const i = e.target.closest?.('.cb input'); if (i && (S.route === 'reclamos' || i.closest('.drawer')) && (i.value || finePointer())) cbOpen(i); });
@@ -1068,15 +1280,21 @@ document.addEventListener('input', e => {
   const i = e.target.closest?.('.cb input');
   if (i) {
     const box = i.closest('.cb'), name = box.dataset.cb, v = i.value, st = cbState(box);
-    if (name === 'nombre') { st.asegurado = v; if (norm(v) !== norm(st.picked)) { st.picked = ''; if (!v) { st.clienteId = ''; st.polizaId = ''; st.certificado = ''; } } }
-    if (name === 'poliza') { st.polizaTxt = v; if (!v) st.polizaId = ''; }
+    if (name === 'cliente') { st.clienteTxt = v; if (st.clienteId && norm(v) !== norm(clienteNombre(st.clienteId))) st.clienteId = ''; }
+    if (name === 'poliza') { st.polizaTxt = v; const p = poliza(st.polizaId); if (p && norm(v) !== norm(p.numero)) st.polizaId = ''; }
+    if (name === 'asegurado') { st.asegurado = v; if (norm(v) !== norm(st.picked)) st.picked = ''; }
     if (name === 'cert') st.certificado = v;
     if (st === RX) rxKeep();
     cbOpen(i);
-    if (!v && name === 'nombre') st === RX ? syncEntry() : syncMx(st);
+    const h = $('.row-hint', rowEl(st)); if (h) { const x = hintFila(st); h.innerHTML = x.html; h.dataset.estado = x.estado; }
     return;
   }
-  const r = e.target.dataset?.rx; if (r) { RX[r] = e.target.value; rxKeep(); }
+  const k = e.target.dataset?.f;
+  if (k) { const st = rowState(e.target); if (st) { st[k] = e.target.value; if (st === RX) rxKeep(); if (k === 'paciente') { const h = $('.row-hint', rowEl(st)); if (h) h.innerHTML = hintFila(st).html; } } }
+});
+document.addEventListener('change', e => {
+  const k = e.target.dataset?.f;
+  if (k === 'parentesco') { const st = rowState(e.target); if (st) { st.parentesco = e.target.value; if (st === RX) rxKeep(); syncRow(st); } }
 });
 document.addEventListener('keydown', e => {
   const i = e.target.closest?.('.cb input');
@@ -1096,41 +1314,33 @@ document.addEventListener('pointerdown', e => {
 });
 function focusNext(input) {
   // Salta a la siguiente casilla vacía de la misma fila
-  const row = input.closest('.rx-new, .mx-row'); if (!row) return;
-  const all = $$('input[type=text]', row);
+  const row = input.closest('[data-row]'); if (!row) return;
+  const all = $$('input[type=text]', row).filter(x => x.offsetParent);
   const rest = all.slice(all.indexOf(input) + 1);
   (rest.find(el => !el.value) || rest[rest.length - 1])?.focus();
 }
 
-/* --- guardar --- */
+/* --- guardar desde la fila de ingreso --- */
 document.addEventListener('submit', async e => {
   if (e.target.id !== 'rx-new') return;
   e.preventDefault();
   if (document.activeElement?.closest('.cb')) cbAutoMatch(document.activeElement);
-  // Si escribieron una póliza que existe, tomarla
-  if (!RX.polizaId && $('#rx-poliza').value.trim()) { const p = DB.polizas.find(x => norm(x.numero) === norm($('#rx-poliza').value)); if (p) pick('poliza', { polizaId: p.id, clienteId: p.clienteId }); }
-  RX.numero = $('#rx-num').value.trim(); RX.notas = $('#rx-notas').value.trim(); RX.etapa = $('#rx-etapa').value;
-  RX.asegurado = $('#rx-nombre').value.trim(); RX.certificado = $('#rx-cert').value.trim();
-  if (!RX.clienteId) { toast('Elige el nombre o la póliza de la lista para saber de qué cliente es', 'err'); $('#rx-nombre').focus(); return; }
-  const p = poliza(RX.polizaId);
-  const etapa = RX.numero ? 'numero' : RX.etapa;
-  const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: etapa === 'recibido' ? 'Recibido.' : `Ingresado a ${p?.aseguradora || 'la aseguradora'}.` }];
-  if (RX.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${RX.numero}.` });
-  const t = {
-    id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: RX.clienteId, polizaId: RX.polizaId, aseguradora: p?.aseguradora || '',
-    asegurado: RX.asegurado || clienteNombre(RX.clienteId), certificado: RX.certificado,
-    asunto: `Reclamo de ${RX.asegurado || shortName(clienteNombre(RX.clienteId))}`, descripcion: RX.notas,
-    canal: CANALES[0], etapa, numeroReclamo: RX.numero, monto: '', fechaSolicitud: todayISO(), fechaIngreso: etapa === 'recibido' ? '' : todayISO(),
-    responsable: S.me.email, visibleCliente: true, notaCliente: '', docs: RX.docs, eventos: ev
-  };
+  RX.etapa = $('#rx-etapa').value;
+  if (!RX.clienteId && !limpiar(RX.clienteTxt)) { toast('Escribe el cliente (la empresa) o elige la póliza', 'err'); $('#rx-cliente').focus(); return; }
   const btn = $('#rx-new [type=submit]'); btn.disabled = true;
-  try { await save('tramites', t, `${t.codigo} Reclamo · ${t.asegurado}${t.numeroReclamo ? ' · ' + t.numeroReclamo : ''}`); }
-  catch (err) { btn.disabled = false; return; }
-  const keepEtapa = RX.etapa;
-  RX = RX_BLANK(); RX.etapa = keepEtapa; rxKeep();
+  let t;
+  try {
+    await asegurarEntidades(RX);
+    t = nuevoReclamo(RX, { etapa: RX.etapa, docs: RX.docs });
+    await save('tramites', t, `${t.codigo} Reclamo · ${shortName(clienteNombre(t.clienteId))}${t.asegurado !== clienteNombre(t.clienteId) ? ' › ' + t.asegurado : ''}${t.numeroReclamo ? ' · ' + t.numeroReclamo : ''}`);
+  } catch (err) { btn.disabled = false; if (err.message) toast(err.message, 'err'); return; }
+  const keep = { etapa: RX.etapa, clienteId: RX.clienteId, clienteTxt: RX.clienteTxt, polizaId: RX.polizaId };
+  // Para la colectiva se queda la empresa y la póliza: el siguiente reclamo suele ser de otro empleado
+  RX = filaNueva(esColectiva({ ...RX }) ? keep : { etapa: RX.etapa });
+  rxKeep();
   render(false);
   $(`.rx-row[data-id="${t.id}"]`)?.classList.add('rx-flash');
-  $('#rx-nombre')?.focus();
+  (RX.clienteId ? $('#rx-asegurado') : $('#rx-cliente'))?.focus();
   toast(`Reclamo ${t.codigo} agregado`);
 });
 
@@ -1153,26 +1363,43 @@ document.addEventListener('change', async e => {
     const files = [...el.files]; if (!files.length) return;
     const id = el.dataset.rxUpload;
     const target = id === 'new' ? null : tramite(id);
-    const carpeta = clienteNombre(target ? target.clienteId : RX.clienteId) || 'General';
+    const carpeta = clienteNombre(target ? target.clienteId : RX.clienteId) || (RX.clienteTxt ? shortName(RX.clienteTxt) : 'Reclamos sin cliente');
+    const subidos = [];
     for (const f of files) {
-      try { toast(`Subiendo ${f.name}…`); const d = await uploadFile(f, carpeta); (target ? (target.docs = target.docs || []) : RX.docs).push({ id: d.id, name: d.name || f.name, size: d.size || f.size, url: d.url || '' }); }
+      try { toast(`Subiendo ${f.name}…`); const d = await uploadFile(f, carpeta); subidos.push({ id: d.id, name: d.name || f.name, size: d.size || f.size, url: d.url || '' }); }
       catch (err) { toast(err.message, 'err'); }
     }
     el.value = '';
-    if (target) { try { await save('tramites', target, `${target.codigo}: ${files.length} PDF agregado${files.length > 1 ? 's' : ''}`); render(false); toast('PDF agregado'); } catch (err) { } }
-    else { rxKeep(); syncEntry(); toast(`${RX.docs.length} PDF listo${RX.docs.length > 1 ? 's' : ''} para el reclamo`); }
+    if (target) { target.docs = [...(target.docs || []), ...subidos]; try { await save('tramites', target, `${target.codigo}: ${subidos.length} PDF agregado${subidos.length > 1 ? 's' : ''}`); render(false); toast('PDF agregado'); } catch (err) { } return; }
+    RX.docs.push(...subidos); rxKeep(); syncRow(RX);
+    await leerSubidos(subidos);
   }
 });
 
-// Enter en una casilla de la tabla guarda y baja a la siguiente fila
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter' || !e.target.classList?.contains('rx-inline')) return;
-  e.preventDefault();
-  const k = e.target.dataset.rinline;
-  e.target.blur();
-  const next = e.target.closest('.rx-row')?.nextElementSibling?.querySelector(`[data-rinline="${k}"]`);
-  next?.focus();
-});
+/* Lee los PDF que se adjuntaron en la fila de ingreso: un formulario llena la fila; varios abren la revisión */
+async function leerSubidos(docs) {
+  if (!docs.length) return;
+  if (S.mode === 'demo') { toast('Adjuntado. En la demo no se leen PDFs reales: prueba con el correo de INJIBOA en la Bandeja.'); return; }
+  toast('Leyendo el PDF…');
+  let textos;
+  try { textos = (await api('api/leer', { json: { fileIds: docs.map(d => d.id) } })).textos || []; }
+  catch (err) { toast('No se pudo leer el PDF: ' + err.message, 'err'); return; }
+  const forms = textos.flatMap(t => leerFormularios(t.texto).map(f => ({ f, ref: t.ref })));
+  if (!forms.length) { toast('Adjuntado. No encontré un formulario de reclamo en ese PDF; llena la fila a mano.'); return; }
+  if (forms.length === 1) {
+    const n = filaDeFormulario(forms[0].f);
+    for (const k of ['clienteId', 'clienteTxt', 'polizaId', 'polizaTxt', 'asegurado', 'certificado', 'paciente', 'parentesco', 'monto', 'notas', 'picked']) if (!RX[k] && n[k]) RX[k] = n[k];
+    rxKeep(); syncRow(RX);
+    toast('Formulario leído. Revisa la fila y pulsa Agregar.');
+    return;
+  }
+  openVariosDesde({
+    titulo: `${forms.length} reclamos en ${docs.length === 1 ? 'el PDF' : 'los PDF'}`, sub: docs.map(d => d.name).join(', '),
+    pool: docs.map(d => ({ id: d.id, name: d.name, size: d.size, doc: d })),
+    rows: forms.map(x => filaDeFormulario(x.f, x.ref)), aseguradora: ''
+  });
+  RX.docs = []; rxKeep(); syncRow(RX);
+}
 
 /* ---------- Pagos (libro de cheques y depósitos) ---------- */
 VIEWS.pagos = () => {
@@ -1609,13 +1836,15 @@ VIEWS.bandeja = () => {
     let acts = '';
     const x = !done ? extraer(m) : null;
     const varios = x && x.rows.length > 1;
+    const pdfs = !done && (m.attachments || []).some(a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name));
+    if (pdfs) acts += `<button class="btn primary sm" type="button" data-act="mail-leer" data-id="${esc(m.id)}">${ic('sparkle')}Leer reclamos del PDF</button>`;
     if (varios) {
-      acts += `<button class="btn primary sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">${ic('list-bullets')}Revisar los ${x.rows.length}</button>`;
+      acts += `<button class="btn ${pdfs ? '' : 'primary'} sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">${ic('list-bullets')}Revisar los ${x.rows.length}</button>`;
       acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
     } else if (!done) {
       if (k.kind === 'pago') acts += `<button class="btn primary sm" type="button" data-act="mail-pago" data-id="${esc(m.id)}">${ic('hand-coins')}Registrar pago</button>`;
       else if (k.kind === 'numero') acts += `<button class="btn primary sm" type="button" data-act="mail-numero" data-id="${esc(m.id)}">${ic('seal-check')}${t ? 'Poner número en ' + esc(t.codigo) : 'Asignar a un trámite'}</button>`;
-      else acts += `<button class="btn primary sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">${ic('plus')}Crear trámite</button>`;
+      else acts += `<button class="btn ${pdfs ? '' : 'primary'} sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">${ic('plus')}Crear trámite</button>`;
       if (k.kind !== 'solicitud') acts += `<button class="btn sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">Crear trámite</button>`;
       if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += `<button class="btn sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">Separar en varios</button>`;
       acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
@@ -1817,7 +2046,6 @@ function limpiaNota(nota, w, nums) {
   n = n.replace(/\b(reclamo|siniestro|n[uú]mero)\b\s*(n[°oº.]*|#)?\s*:?\s*$/i, '').replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '');
   return n;
 }
-const toNum = s => +String(s).replace(/,(?=\d{3}\b)/g, '').replace(/,/g, '');
 
 function extraer(m) {
   const k = classify(m);
@@ -1911,33 +2139,63 @@ function extraer(m) {
   return { mode, kind: k.kind, aseguradora: k.aseguradora, rows, sueltos };
 }
 
-/* ---------- la hoja para revisar ---------- */
+/* ---------- la hoja para revisar ----------
+   MX.rows son filas de reclamo (mismas casillas que la pestaña Reclamos).
+   MX.pool son los archivos disponibles: adjuntos del correo o PDF ya subidos a Drive. */
 let MX = null;
 
 function openVarios(mailId) {
   const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
   const x = extraer(m);
-  MX = { mail: m, ...x };
-  if (MX.rows.length === 1 && (m.attachments || []).length >= 2 && MX.mode === 'reclamos') {
-    // "Separar en varios": una fila por adjunto
-    MX.rows = m.attachments.map(a => ({ ...structuredClone(MX.rows[0]), docs: [a.id], notas: a.name.replace(/\.[a-z0-9]+$/i, '') }));
-  }
-  const d = openDrawer(variosHTML());
-  d.classList.add('wide');
-  MX.rows.forEach(syncMx);
+  let rows = x.rows.map(r => filaNueva({ ...r, clienteTxt: r.clienteId ? clienteNombre(r.clienteId) : '', polizaTxt: '' }));
+  if (rows.length === 1 && (m.attachments || []).length >= 2 && x.mode === 'reclamos')
+    rows = m.attachments.map(a => filaNueva({ ...structuredClone(rows[0]), docs: [a.id], notas: a.name.replace(/\.[a-z0-9]+$/i, '') }));
+  openVariosDesde({ mail: m, mode: x.mode, kind: x.kind, aseguradora: x.aseguradora, rows, pool: m.attachments || [], sueltos: x.sueltos });
 }
 
-const mxAtt = id => (MX.mail.attachments || []).find(a => a.id === id);
+/* Lee los PDF adjuntos de un correo y arma una fila por cada formulario de reclamo */
+async function leerPdfsCorreo(mailId) {
+  const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
+  const pdfs = (m.attachments || []).filter(a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name));
+  if (!pdfs.length) return toast('Este correo no trae PDF', 'err');
+  let textos;
+  if (S.mode === 'demo') textos = pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
+  else {
+    toast(`Leyendo ${pdfs.length} ${pdfs.length === 1 ? 'PDF' : 'PDFs'}…`);
+    try { textos = (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || []; }
+    catch (e) { return toast('No se pudo leer: ' + e.message, 'err'); }
+  }
+  const forms = textos.flatMap(t => leerFormularios(t.texto).map(f => ({ f, ref: t.ref })));
+  const malos = textos.filter(t => t.error);
+  if (!forms.length) { toast(malos.length ? `No se pudo leer: ${malos[0].error}` : 'No encontré formularios de reclamo en los PDF. Usa “Crear trámite”.', 'err'); return; }
+  const aseg = aseguradoraDeCorreo(m.from);
+  openVariosDesde({
+    mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: aseg,
+    titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`,
+    rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m.attachments || []
+  });
+}
+
+function openVariosDesde(o) {
+  MX = { mail: null, mode: 'reclamos', kind: 'solicitud', aseguradora: '', titulo: '', sub: '', pool: [], sueltos: [], ...o };
+  const d = openDrawer(variosHTML());
+  d.classList.add('wide');
+  MX.rows.forEach(syncRow);
+}
+
+const mxAtt = id => MX.pool.find(a => a.id === id);
 function variosHTML() {
   const pagos = MX.mode === 'pagos';
   const n = MX.rows.length;
+  const m = MX.mail;
+  const titulo = MX.titulo || `${n} ${pagos ? (n === 1 ? 'pago' : 'pagos') : (n === 1 ? 'reclamo' : 'reclamos')} en este correo`;
   return `
-  <div class="drawer-h"><div class="t"><span class="label">${esc(MX.mail.fromName || MX.mail.from)} · ${fmtAgo(MX.mail.fecha)}</span><h2>${n} ${pagos ? (n === 1 ? 'pago' : 'pagos') : (n === 1 ? 'reclamo' : 'reclamos')} en este correo</h2>
-    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(MX.mail.subject || '')}</div></div>
+  <div class="drawer-h"><div class="t"><span class="label">${m ? `${esc(m.fromName || m.from)} · ${fmtAgo(m.fecha)}` : 'Desde PDF'}</span><h2>${esc(titulo)}</h2>
+    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(m ? m.subject || '' : MX.sub)}</div></div>
     <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="drawer-b">
-    <p class="muted" style="margin:0 0 14px;font-size:.86rem">Revisa cada fila. Puedes escribir en Nombre, Póliza y Certificado para buscar; ${pagos ? 'cada fila será un pago ligado a su reclamo.' : 'las filas que dicen <b>Actualiza</b> ponen el número o los PDFs en un reclamo que ya existe.'}</p>
-    <details class="mx-mail"><summary>Ver el correo</summary><p>${esc(MX.mail.body || MX.mail.snippet || '').replace(/\n/g, '<br>')}</p></details>
+    <p class="muted" style="margin:0 0 14px;font-size:.86rem">Revisa cada fila. Cliente, póliza, asegurado y certificado buscan mientras escribes. ${pagos ? 'Cada fila será un pago ligado a su reclamo.' : 'Lo marcado como <b>Se creará</b> se agrega solo al guardar; las filas que dicen <b>Actualiza</b> completan un reclamo que ya existe.'}</p>
+    ${m ? `<details class="mx-mail"><summary>Ver el correo</summary><p>${esc(m.body || m.snippet || '').replace(/\n/g, '<br>')}</p></details>` : ''}
     <div class="mx-rows">${MX.rows.map((r, i) => mxRowHTML(r, i)).join('')}</div>
     <button class="btn sm" type="button" data-act="mx-add" style="margin-top:10px">${ic('plus')}Agregar fila</button>
   </div>
@@ -1948,37 +2206,16 @@ function variosHTML() {
 function mxRowHTML(r, i) {
   const pagos = MX.mode === 'pagos';
   const t = tramite(r.tramiteId);
-  const atts = MX.mail.attachments || [];
-  return `<section class="mx-row card" data-mx="${i}">
+  const c = campos(r, `mx${i}`);
+  return `<section class="mx-row card" data-row="mx" data-mx="${i}">
     <div class="mx-top"><span class="mx-n">${i + 1}</span>
       ${t ? `<span class="pill gold">Actualiza ${esc(t.codigo)}</span><button class="btn ghost sm" type="button" data-act="mx-unlink" data-i="${i}">Hacer nuevo</button>` : `<span class="pill info">${pagos ? 'Pago nuevo' : 'Reclamo nuevo'}</span>`}
-      <span class="mx-hint" id="mx-hint-${i}"></span>
+      <span class="row-hint"></span>
       <button class="btn ghost icon sm" type="button" data-act="mx-del" data-i="${i}" aria-label="Quitar fila ${i + 1}">${ic('x')}</button></div>
-    <div class="mx-grid">
-      <div class="rx-cell mx-name" data-l="Nombre">${comboHTML('nombre', `mx-nombre-${i}`, 'Nombre', r.asegurado, 'Asegurado o cliente')}</div>
-      <div class="rx-cell" data-l="Póliza">${comboHTML('poliza', `mx-poliza-${i}`, 'Póliza', poliza(r.polizaId)?.numero || '', 'Póliza')}</div>
-      <div class="rx-cell" data-l="Cert.">${comboHTML('cert', `mx-cert-${i}`, 'Certificado', r.certificado, 'Cert.')}</div>
-      ${pagos ? `
-      <div class="rx-cell" data-l="Cheque o ref."><label class="sr" for="mx-cheque-${i}">Cheque</label><input id="mx-cheque-${i}" type="text" value="${esc(r.cheque)}" data-mxf="cheque" placeholder="N.º de cheque"></div>
-      <div class="rx-cell" data-l="Monto"><label class="sr" for="mx-monto-${i}">Monto</label><input id="mx-monto-${i}" type="text" inputmode="decimal" value="${esc(r.monto)}" data-mxf="monto" placeholder="0.00"></div>`
-      : `
-      <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="mx-num-${i}">Número de reclamo</label><input id="mx-num-${i}" type="text" value="${esc(r.numero)}" data-mxf="numero" placeholder="Opcional"></div>
-      <div class="rx-cell mx-notes" data-l="Notas"><label class="sr" for="mx-notas-${i}">Notas</label><input id="mx-notas-${i}" type="text" value="${esc(r.notas)}" data-mxf="notas" placeholder="Qué se reclama"></div>`}
-    </div>
-    ${atts.length ? `<div class="mx-atts" role="group" aria-label="PDFs de esta fila">${atts.map(a => `<button type="button" class="mx-att" data-act="mx-att" data-i="${i}" data-a="${esc(a.id)}" aria-pressed="${r.docs.includes(a.id)}">${ic(r.docs.includes(a.id) ? 'check' : 'paperclip')}${esc(a.name)}</button>`).join('')}</div>` : ''}
+    <div class="rx-l1">${c.cliente}${c.poliza}${c.asegurado}${c.cert}${pagos ? '' : c.paciente + c.parentesco}</div>
+    <div class="rx-l2 mx-l2">${c.monto}${pagos ? c.cheque : c.numero}${c.notas}</div>
+    ${MX.pool.length ? `<div class="mx-atts" role="group" aria-label="PDFs de esta fila">${MX.pool.map(a => `<button type="button" class="mx-att" data-act="mx-att" data-i="${i}" data-a="${esc(a.id)}" aria-pressed="${r.docs.includes(a.id)}">${ic(r.docs.includes(a.id) ? 'check' : 'paperclip')}${esc(a.name)}</button>`).join('')}</div>` : ''}
   </section>`;
-}
-
-function syncMx(st) {
-  const i = MX?.rows.indexOf(st); if (i == null || i < 0) return;
-  const row = $(`[data-mx="${i}"]`); if (!row) return;
-  const p = poliza(st.polizaId);
-  const set = (id, v) => { const el = $('#' + id); if (el && document.activeElement !== el) el.value = v; };
-  set(`mx-nombre-${i}`, st.asegurado); set(`mx-poliza-${i}`, p ? p.numero : (st.polizaTxt || '')); set(`mx-cert-${i}`, st.certificado);
-  const h = $(`#mx-hint-${i}`);
-  h.innerHTML = st.clienteId ? `${ic('check-circle')}${esc(shortName(clienteNombre(st.clienteId)))}${p ? ` · ${esc(p.ramo)} · ${esc(p.aseguradora)}` : ''}` : `${ic('warning')}Falta elegir de quién es`;
-  h.classList.toggle('ok', !!st.clienteId);
-  row.classList.toggle('bad', !st.clienteId);
 }
 
 function mxRedraw() {
@@ -1986,40 +2223,38 @@ function mxRedraw() {
   const scroll = $('.drawer-b', d).scrollTop;
   d.innerHTML = variosHTML();
   $('.drawer-b', d).scrollTop = scroll;
-  MX.rows.forEach(syncMx);
+  MX.rows.forEach(syncRow);
 }
 
-document.addEventListener('input', e => {
-  const f = e.target.dataset?.mxf; if (!f || !MX) return;
-  MX.rows[+e.target.closest('[data-mx]').dataset.mx][f] = e.target.value;
-});
-
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-act^="mx-"], [data-act="mail-varios"]'); if (!b) return;
+  const b = e.target.closest('[data-act^="mx-"], [data-act="mail-varios"], [data-act="mail-leer"]'); if (!b) return;
   const act = b.dataset.act, i = +b.dataset.i;
   if (act === 'mail-varios') return openVarios(b.dataset.id);
+  if (act === 'mail-leer') return leerPdfsCorreo(b.dataset.id);
   if (!MX) return;
   if (act === 'mx-att') { const r = MX.rows[i], a = b.dataset.a; r.docs = r.docs.includes(a) ? r.docs.filter(x => x !== a) : [...r.docs, a]; MX.sueltos = (MX.sueltos || []).filter(x => !MX.rows.some(rr => rr.docs.includes(x))); mxRedraw(); }
   if (act === 'mx-del') { MX.rows.splice(i, 1); if (!MX.rows.length) return closeDrawer(); mxRedraw(); }
-  if (act === 'mx-add') { MX.rows.push({ asegurado: '', picked: '', clienteId: '', polizaId: '', certificado: '', numero: '', notas: '', monto: '', cheque: '', docs: [], tramiteId: '' }); mxRedraw(); $(`#mx-nombre-${MX.rows.length - 1}`)?.focus(); }
+  if (act === 'mx-add') { const last = MX.rows[MX.rows.length - 1]; MX.rows.push(filaNueva(last ? { clienteId: last.clienteId, clienteTxt: last.clienteTxt, polizaId: last.polizaId, polizaTxt: last.polizaTxt } : {})); mxRedraw(); $(`#mx${MX.rows.length - 1}-asegurado`)?.focus(); }
   if (act === 'mx-unlink') { MX.rows[i].tramiteId = ''; mxRedraw(); }
   if (act === 'mx-go') guardarVarios(b);
 });
 
 async function guardarVarios(btn) {
   const m = MX.mail, pagos = MX.mode === 'pagos';
-  const malas = MX.rows.map((r, i) => r.clienteId ? -1 : i).filter(i => i >= 0);
-  if (malas.length) { toast(`Falta elegir de quién es la fila ${malas.map(i => i + 1).join(', ')}`, 'err'); $(`#mx-nombre-${malas[0]}`)?.focus(); return; }
+  const malas = MX.rows.map((r, i) => r.clienteId || limpiar(r.clienteTxt) ? -1 : i).filter(i => i >= 0);
+  if (malas.length) { toast(`Falta el cliente en la fila ${malas.map(i => i + 1).join(', ')}`, 'err'); $(`#mx${malas[0]}-cliente`)?.focus(); return; }
   if (pagos && MX.rows.some(r => !(toNum(r.monto) > 0))) { toast('Escribe el monto de cada pago', 'err'); return; }
   btn.disabled = true;
   try {
-    // Copiar a Drive los adjuntos elegidos, en la carpeta de cada cliente
+    // 1. Crear lo que falte (clientes, pólizas, asegurados)
+    for (const r of MX.rows) await asegurarEntidades(r, MX.aseguradora);
+    // 2. Los PDF: si ya están en Drive se usan; si vienen del correo se copian a la carpeta del cliente
     const docBy = {};
     const porCliente = {};
-    MX.rows.forEach(r => r.docs.forEach(a => { (porCliente[r.clienteId] = porCliente[r.clienteId] || new Set()).add(a); }));
+    MX.rows.forEach(r => r.docs.forEach(a => { const x = mxAtt(a); if (x?.doc) docBy[r.clienteId + a] = x.doc; else (porCliente[r.clienteId] = porCliente[r.clienteId] || new Set()).add(a); }));
     for (const [cid, set] of Object.entries(porCliente)) {
       const ids = [...set];
-      if (S.mode === 'demo') ids.forEach(a => { const x = mxAtt(a); docBy[cid + a] = { id: 'demo-' + a, name: x.name, size: x.size }; });
+      if (S.mode === 'demo' || !m) ids.forEach(a => { const x = mxAtt(a); if (x) docBy[cid + a] = { id: 'demo-' + a, name: x.name, size: x.size }; });
       else {
         toast('Guardando adjuntos en Drive…');
         const r = await api('api/gmail', { json: { id: m.id, cuenta: m.cuenta, attachments: ids, folder: clienteNombre(cid) } });
@@ -2027,12 +2262,13 @@ async function guardarVarios(btn) {
       }
     }
     const docsDe = r => r.docs.map(a => docBy[r.clienteId + a]).filter(Boolean);
+    const fecha = (m?.fecha || nowISO()).slice(0, 10);
     const hechos = [];
     for (const r of MX.rows) {
       const p = poliza(r.polizaId);
       if (pagos) {
         const t = tramite(r.tramiteId);
-        const pg = { id: '', tramiteId: r.tramiteId, clienteId: r.clienteId, aseguradora: MX.aseguradora || t?.aseguradora || p?.aseguradora || '', forma: r.cheque ? 'Cheque' : 'Depósito', numero: r.cheque, banco: '', monto: toNum(r.monto), fechaAviso: (m.fecha || nowISO()).slice(0, 10), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: r.cheque ? 'disponible' : 'depositado', notas: r.notas || m.subject || '' };
+        const pg = { id: '', tramiteId: r.tramiteId, clienteId: r.clienteId, aseguradora: MX.aseguradora || t?.aseguradora || p?.aseguradora || '', forma: r.cheque ? 'Cheque' : 'Depósito', numero: r.cheque, banco: '', monto: toNum(r.monto), fechaAviso: fecha, fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: r.cheque ? 'disponible' : 'depositado', notas: r.notas || m?.subject || '' };
         if (pg.estado === 'depositado') pg.fechaEntregado = pg.fechaAviso;
         await save('pagos', pg, `${pg.forma} ${pg.numero} por ${fmtMoney(pg.monto)} (${shortName(r.asegurado || clienteNombre(r.clienteId))})`);
         await linkPagoTramite(pg, true);
@@ -2045,32 +2281,26 @@ async function guardarVarios(btn) {
         if (r.numero && !t.numeroReclamo) { t.numeroReclamo = r.numero; cambios.push(`número ${r.numero}`); }
         const nuevos = docsDe(r); if (nuevos.length) { t.docs = [...(t.docs || []), ...nuevos]; cambios.push(`${nuevos.length} PDF`); }
         if (r.notas && !t.descripcion) t.descripcion = r.notas;
+        if (r.monto && !t.monto) t.monto = toNum(r.monto);
+        if (r.paciente && !t.paciente) { t.paciente = r.paciente; t.parentesco = r.parentesco; }
         let accion;
         if (r.numero && ['recibido', 'ingresado'].includes(t.etapa)) { t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO(); accion = 'movió'; }
-        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `Del correo "${m.subject}": ${cambios.join(', ') || 'revisado'}.` }];
-        await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'} (correo con varios reclamos)`, accion);
+        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `${m ? `Del correo "${m.subject}"` : 'Del PDF'}: ${cambios.join(', ') || 'revisado'}.` }];
+        await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'}`, accion);
         hechos.push(t);
       } else {
         const etapa = r.numero ? 'numero' : (MX.kind === 'solicitud' ? 'recibido' : 'ingresado');
-        const nombre = r.asegurado || clienteNombre(r.clienteId);
-        const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Recibido en el correo "${m.subject}".` }];
-        if (r.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${r.numero}.` });
-        const nt = {
-          id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: r.clienteId, polizaId: r.polizaId, aseguradora: p?.aseguradora || MX.aseguradora || '',
-          asegurado: nombre, certificado: r.certificado, asunto: `Reclamo de ${shortName(nombre)}`, descripcion: r.notas, canal: CANALES[0], etapa, numeroReclamo: r.numero,
-          monto: toNum(r.monto) || '', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), fechaIngreso: etapa === 'recibido' ? '' : todayISO(),
-          responsable: S.me.email, visibleCliente: true, notaCliente: '', docs: docsDe(r), eventos: ev, gmailId: m.id
-        };
-        await save('tramites', nt, `${nt.codigo} Reclamo · ${nombre}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
+        const nt = nuevoReclamo(r, { etapa, fecha: r.fecha || fecha, gmailId: m?.id || '', docs: docsDe(r), aseguradora: MX.aseguradora, origen: m ? `Recibido en el correo "${m.subject}".` : 'Leído del PDF.' });
+        await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))}${nt.asegurado !== clienteNombre(nt.clienteId) ? ' › ' + nt.asegurado : ''}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
         hechos.push(nt);
       }
     }
     const n = hechos.length;
-    await markMail(m.id, pagos ? `${n} pagos registrados` : `${n} reclamos: ${hechos.map(h => h.codigo).filter(Boolean).join(', ')}`, hechos[0]?.id || hechos[0]?.tramiteId);
+    if (m) await markMail(m.id, pagos ? `${n} pagos registrados` : `${n} reclamos: ${hechos.map(h => h.codigo).filter(Boolean).join(', ')}`, hechos[0]?.id || hechos[0]?.tramiteId);
     MX = null;
     closeDrawer(); render(false);
     toast(pagos ? `${n} ${n === 1 ? 'pago registrado' : 'pagos registrados'}` : `${n} ${n === 1 ? 'reclamo guardado' : 'reclamos guardados'}`);
-  } catch (e) { btn.disabled = false; toast('No se terminó: ' + e.message, 'err'); }
+  } catch (e) { btn.disabled = false; toast('No se terminó: ' + e.message, 'err'); render(false); }
 }
 
 /* ---------- eventos (delegados) ---------- */
@@ -2160,13 +2390,7 @@ document.addEventListener('click', async e => {
       c.portal = token(); await save('clientes', c, `${c.nombre}: enlace del portal cambiado`); closeDrawer(true); openCliente(c.id); toast('Enlace nuevo creado'); break;
     }
     case 'portal-back': go('clientes'); break;
-    case 'rx-clear': RX = RX_BLANK(); rxKeep(); render(false); $('#rx-nombre')?.focus(); break;
-    case 'rx-new-cliente': {
-      const name = $('#rx-nombre').value.trim(); cbClose($('#rx-nombre').closest('.cb'));
-      openCliente(null, { nombre: name });
-      cur.afterSave = c => { pick('nombre', { kind: 'cli', label: c.nombre, clienteId: c.id }); render(false); toast('Cliente creado. Ahora agrega su póliza si no está.'); $('#rx-poliza')?.focus(); };
-      break;
-    }
+    case 'rx-clear': RX = filaNueva(); rxKeep(); render(false); $('#rx-cliente')?.focus(); break;
     case 'doc-del': {
       const i = +el.dataset.i; const doc = cur.row.docs[i];
       if (!await ask(`¿Quitar ${doc.name} de este registro? El archivo sigue en Drive.`, { ok: 'Quitar' })) break;

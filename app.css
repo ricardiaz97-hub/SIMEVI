@@ -631,3 +631,31 @@ a.btn{text-decoration:none;color:var(--fg)}
 a.btn.primary{color:var(--on-acc)}
 a.btn.ghost{color:var(--muted)}
 .seg button{display:inline-flex;align-items:center;gap:6px}
+
+/* ---------- Reclamos: cliente › póliza › asegurado › paciente ---------- */
+.rx-new{display:flex;flex-direction:column;gap:10px;padding:12px 16px 4px}
+.rx-l1{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.4fr) 90px minmax(0,1.2fr) 130px;gap:8px}
+.rx-l2{display:grid;grid-template-columns:110px minmax(0,1fr) minmax(0,2fr) auto auto;gap:8px;align-items:end}
+.mx-l2{grid-template-columns:110px minmax(0,1fr) minmax(0,2.4fr)}
+.rx-l1 select,.rx-l2 select{min-height:40px}
+.rx-pdf{gap:6px}
+.row-hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);min-height:22px}
+.row-hint[data-estado="ok"]{color:var(--ok)}
+.row-hint[data-estado="bad"]{color:var(--bad)}
+.row-hint[data-estado="new"]{color:var(--acc-hi)}
+.mx-top .row-hint{flex:1;min-width:0}
+.rx-co{display:block;font:600 .62rem/1.2 var(--f-display)!important;letter-spacing:.12em;text-transform:uppercase;color:var(--acc)!important;margin-bottom:2px}
+.rx-under{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:2px 0 8px;font-size:.8rem}
+@media (max-width:1100px){
+  .rx-l1{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .rx-l2{grid-template-columns:110px minmax(0,1fr) minmax(0,1.6fr) auto auto}
+}
+@media (max-width:760px){
+  .rx-l1,.rx-l2,.mx-l2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rx-l1 [data-l="Cliente"],.rx-l1 [data-l="Asegurado"],.rx-l2 .rx-notes,.rx-l2 .rx-go{grid-column:1/-1}
+  .rx-new .rx-cell::before,.mx-row .rx-cell::before{content:attr(data-l);display:block;margin-bottom:5px;font:500 .6rem/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+}
+.drawer.wide{width:min(1120px,100vw)}
+.rx-new .rx-cell[data-l]::before,.mx-row .rx-cell[data-l]::before{content:attr(data-l);display:block;margin-bottom:5px;font:500 .6rem/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.rx-new .rx-go::before,.rx-new [data-l="PDF"]::before{visibility:hidden}
+.rx-under .row-hint{flex:1;min-width:0}

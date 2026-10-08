@@ -153,7 +153,7 @@ function render(animate) {
     window.scrollTo(0, 0);
   } else v.classList.remove('enter');
   lastRoute = S.route;
-  if (S.route === 'reclamos') syncEntry();
+  if (S.route === 'reclamos') syncRow(RX);
   if (keepFocus) { const el = document.getElementById(keepFocus); if (el) { el.focus(); try { el.setSelectionRange(sel, sel); } catch (e) { } } }
   document.title = (ROUTES.find(r => r.k === S.route)?.n || 'Buscar') + ' · SIMEVI';
   const more = $('.mob-more'); if (more) more.style.display = matchMedia('(max-width:760px)').matches ? '' : 'none';

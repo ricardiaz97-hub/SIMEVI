@@ -48,7 +48,6 @@ function limpiaNota(nota, w, nums) {
   n = n.replace(/\b(reclamo|siniestro|n[uú]mero)\b\s*(n[°oº.]*|#)?\s*:?\s*$/i, '').replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '');
   return n;
 }
-const toNum = s => +String(s).replace(/,(?=\d{3}\b)/g, '').replace(/,/g, '');
 
 function extraer(m) {
   const k = classify(m);
@@ -142,33 +141,63 @@ function extraer(m) {
   return { mode, kind: k.kind, aseguradora: k.aseguradora, rows, sueltos };
 }
 
-/* ---------- la hoja para revisar ---------- */
+/* ---------- la hoja para revisar ----------
+   MX.rows son filas de reclamo (mismas casillas que la pestaña Reclamos).
+   MX.pool son los archivos disponibles: adjuntos del correo o PDF ya subidos a Drive. */
 let MX = null;
 
 function openVarios(mailId) {
   const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
   const x = extraer(m);
-  MX = { mail: m, ...x };
-  if (MX.rows.length === 1 && (m.attachments || []).length >= 2 && MX.mode === 'reclamos') {
-    // "Separar en varios": una fila por adjunto
-    MX.rows = m.attachments.map(a => ({ ...structuredClone(MX.rows[0]), docs: [a.id], notas: a.name.replace(/\.[a-z0-9]+$/i, '') }));
-  }
-  const d = openDrawer(variosHTML());
-  d.classList.add('wide');
-  MX.rows.forEach(syncMx);
+  let rows = x.rows.map(r => filaNueva({ ...r, clienteTxt: r.clienteId ? clienteNombre(r.clienteId) : '', polizaTxt: '' }));
+  if (rows.length === 1 && (m.attachments || []).length >= 2 && x.mode === 'reclamos')
+    rows = m.attachments.map(a => filaNueva({ ...structuredClone(rows[0]), docs: [a.id], notas: a.name.replace(/\.[a-z0-9]+$/i, '') }));
+  openVariosDesde({ mail: m, mode: x.mode, kind: x.kind, aseguradora: x.aseguradora, rows, pool: m.attachments || [], sueltos: x.sueltos });
 }
 
-const mxAtt = id => (MX.mail.attachments || []).find(a => a.id === id);
+/* Lee los PDF adjuntos de un correo y arma una fila por cada formulario de reclamo */
+async function leerPdfsCorreo(mailId) {
+  const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
+  const pdfs = (m.attachments || []).filter(a => /pdf|image/i.test(a.mime || '') || /\.(pdf|jpe?g|png)$/i.test(a.name));
+  if (!pdfs.length) return toast('Este correo no trae PDF', 'err');
+  let textos;
+  if (S.mode === 'demo') textos = pdfs.map(a => ({ ref: a.id, name: a.name, texto: a.ocr || '' }));
+  else {
+    toast(`Leyendo ${pdfs.length} ${pdfs.length === 1 ? 'PDF' : 'PDFs'}…`);
+    try { textos = (await api('api/leer', { json: { mail: { id: m.id, cuenta: m.cuenta, partIds: pdfs.map(a => a.id) } } })).textos || []; }
+    catch (e) { return toast('No se pudo leer: ' + e.message, 'err'); }
+  }
+  const forms = textos.flatMap(t => leerFormularios(t.texto).map(f => ({ f, ref: t.ref })));
+  const malos = textos.filter(t => t.error);
+  if (!forms.length) { toast(malos.length ? `No se pudo leer: ${malos[0].error}` : 'No encontré formularios de reclamo en los PDF. Usa “Crear trámite”.', 'err'); return; }
+  const aseg = aseguradoraDeCorreo(m.from);
+  openVariosDesde({
+    mail: m, mode: 'reclamos', kind: 'solicitud', aseguradora: aseg,
+    titulo: `${forms.length} ${forms.length === 1 ? 'reclamo leído' : 'reclamos leídos'} del PDF`,
+    rows: forms.map(x => filaDeFormulario(x.f, x.ref)), pool: m.attachments || []
+  });
+}
+
+function openVariosDesde(o) {
+  MX = { mail: null, mode: 'reclamos', kind: 'solicitud', aseguradora: '', titulo: '', sub: '', pool: [], sueltos: [], ...o };
+  const d = openDrawer(variosHTML());
+  d.classList.add('wide');
+  MX.rows.forEach(syncRow);
+}
+
+const mxAtt = id => MX.pool.find(a => a.id === id);
 function variosHTML() {
   const pagos = MX.mode === 'pagos';
   const n = MX.rows.length;
+  const m = MX.mail;
+  const titulo = MX.titulo || `${n} ${pagos ? (n === 1 ? 'pago' : 'pagos') : (n === 1 ? 'reclamo' : 'reclamos')} en este correo`;
   return `
-  <div class="drawer-h"><div class="t"><span class="label">${esc(MX.mail.fromName || MX.mail.from)} · ${fmtAgo(MX.mail.fecha)}</span><h2>${n} ${pagos ? (n === 1 ? 'pago' : 'pagos') : (n === 1 ? 'reclamo' : 'reclamos')} en este correo</h2>
-    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(MX.mail.subject || '')}</div></div>
+  <div class="drawer-h"><div class="t"><span class="label">${m ? `${esc(m.fromName || m.from)} · ${fmtAgo(m.fecha)}` : 'Desde PDF'}</span><h2>${esc(titulo)}</h2>
+    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(m ? m.subject || '' : MX.sub)}</div></div>
     <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
   <div class="drawer-b">
-    <p class="muted" style="margin:0 0 14px;font-size:.86rem">Revisa cada fila. Puedes escribir en Nombre, Póliza y Certificado para buscar; ${pagos ? 'cada fila será un pago ligado a su reclamo.' : 'las filas que dicen <b>Actualiza</b> ponen el número o los PDFs en un reclamo que ya existe.'}</p>
-    <details class="mx-mail"><summary>Ver el correo</summary><p>${esc(MX.mail.body || MX.mail.snippet || '').replace(/\n/g, '<br>')}</p></details>
+    <p class="muted" style="margin:0 0 14px;font-size:.86rem">Revisa cada fila. Cliente, póliza, asegurado y certificado buscan mientras escribes. ${pagos ? 'Cada fila será un pago ligado a su reclamo.' : 'Lo marcado como <b>Se creará</b> se agrega solo al guardar; las filas que dicen <b>Actualiza</b> completan un reclamo que ya existe.'}</p>
+    ${m ? `<details class="mx-mail"><summary>Ver el correo</summary><p>${esc(m.body || m.snippet || '').replace(/\n/g, '<br>')}</p></details>` : ''}
     <div class="mx-rows">${MX.rows.map((r, i) => mxRowHTML(r, i)).join('')}</div>
     <button class="btn sm" type="button" data-act="mx-add" style="margin-top:10px">${ic('plus')}Agregar fila</button>
   </div>
@@ -179,37 +208,16 @@ function variosHTML() {
 function mxRowHTML(r, i) {
   const pagos = MX.mode === 'pagos';
   const t = tramite(r.tramiteId);
-  const atts = MX.mail.attachments || [];
-  return `<section class="mx-row card" data-mx="${i}">
+  const c = campos(r, `mx${i}`);
+  return `<section class="mx-row card" data-row="mx" data-mx="${i}">
     <div class="mx-top"><span class="mx-n">${i + 1}</span>
       ${t ? `<span class="pill gold">Actualiza ${esc(t.codigo)}</span><button class="btn ghost sm" type="button" data-act="mx-unlink" data-i="${i}">Hacer nuevo</button>` : `<span class="pill info">${pagos ? 'Pago nuevo' : 'Reclamo nuevo'}</span>`}
-      <span class="mx-hint" id="mx-hint-${i}"></span>
+      <span class="row-hint"></span>
       <button class="btn ghost icon sm" type="button" data-act="mx-del" data-i="${i}" aria-label="Quitar fila ${i + 1}">${ic('x')}</button></div>
-    <div class="mx-grid">
-      <div class="rx-cell mx-name" data-l="Nombre">${comboHTML('nombre', `mx-nombre-${i}`, 'Nombre', r.asegurado, 'Asegurado o cliente')}</div>
-      <div class="rx-cell" data-l="Póliza">${comboHTML('poliza', `mx-poliza-${i}`, 'Póliza', poliza(r.polizaId)?.numero || '', 'Póliza')}</div>
-      <div class="rx-cell" data-l="Cert.">${comboHTML('cert', `mx-cert-${i}`, 'Certificado', r.certificado, 'Cert.')}</div>
-      ${pagos ? `
-      <div class="rx-cell" data-l="Cheque o ref."><label class="sr" for="mx-cheque-${i}">Cheque</label><input id="mx-cheque-${i}" type="text" value="${esc(r.cheque)}" data-mxf="cheque" placeholder="N.º de cheque"></div>
-      <div class="rx-cell" data-l="Monto"><label class="sr" for="mx-monto-${i}">Monto</label><input id="mx-monto-${i}" type="text" inputmode="decimal" value="${esc(r.monto)}" data-mxf="monto" placeholder="0.00"></div>`
-      : `
-      <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="mx-num-${i}">Número de reclamo</label><input id="mx-num-${i}" type="text" value="${esc(r.numero)}" data-mxf="numero" placeholder="Opcional"></div>
-      <div class="rx-cell mx-notes" data-l="Notas"><label class="sr" for="mx-notas-${i}">Notas</label><input id="mx-notas-${i}" type="text" value="${esc(r.notas)}" data-mxf="notas" placeholder="Qué se reclama"></div>`}
-    </div>
-    ${atts.length ? `<div class="mx-atts" role="group" aria-label="PDFs de esta fila">${atts.map(a => `<button type="button" class="mx-att" data-act="mx-att" data-i="${i}" data-a="${esc(a.id)}" aria-pressed="${r.docs.includes(a.id)}">${ic(r.docs.includes(a.id) ? 'check' : 'paperclip')}${esc(a.name)}</button>`).join('')}</div>` : ''}
+    <div class="rx-l1">${c.cliente}${c.poliza}${c.asegurado}${c.cert}${pagos ? '' : c.paciente + c.parentesco}</div>
+    <div class="rx-l2 mx-l2">${c.monto}${pagos ? c.cheque : c.numero}${c.notas}</div>
+    ${MX.pool.length ? `<div class="mx-atts" role="group" aria-label="PDFs de esta fila">${MX.pool.map(a => `<button type="button" class="mx-att" data-act="mx-att" data-i="${i}" data-a="${esc(a.id)}" aria-pressed="${r.docs.includes(a.id)}">${ic(r.docs.includes(a.id) ? 'check' : 'paperclip')}${esc(a.name)}</button>`).join('')}</div>` : ''}
   </section>`;
-}
-
-function syncMx(st) {
-  const i = MX?.rows.indexOf(st); if (i == null || i < 0) return;
-  const row = $(`[data-mx="${i}"]`); if (!row) return;
-  const p = poliza(st.polizaId);
-  const set = (id, v) => { const el = $('#' + id); if (el && document.activeElement !== el) el.value = v; };
-  set(`mx-nombre-${i}`, st.asegurado); set(`mx-poliza-${i}`, p ? p.numero : (st.polizaTxt || '')); set(`mx-cert-${i}`, st.certificado);
-  const h = $(`#mx-hint-${i}`);
-  h.innerHTML = st.clienteId ? `${ic('check-circle')}${esc(shortName(clienteNombre(st.clienteId)))}${p ? ` · ${esc(p.ramo)} · ${esc(p.aseguradora)}` : ''}` : `${ic('warning')}Falta elegir de quién es`;
-  h.classList.toggle('ok', !!st.clienteId);
-  row.classList.toggle('bad', !st.clienteId);
 }
 
 function mxRedraw() {
@@ -217,40 +225,38 @@ function mxRedraw() {
   const scroll = $('.drawer-b', d).scrollTop;
   d.innerHTML = variosHTML();
   $('.drawer-b', d).scrollTop = scroll;
-  MX.rows.forEach(syncMx);
+  MX.rows.forEach(syncRow);
 }
 
-document.addEventListener('input', e => {
-  const f = e.target.dataset?.mxf; if (!f || !MX) return;
-  MX.rows[+e.target.closest('[data-mx]').dataset.mx][f] = e.target.value;
-});
-
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-act^="mx-"], [data-act="mail-varios"]'); if (!b) return;
+  const b = e.target.closest('[data-act^="mx-"], [data-act="mail-varios"], [data-act="mail-leer"]'); if (!b) return;
   const act = b.dataset.act, i = +b.dataset.i;
   if (act === 'mail-varios') return openVarios(b.dataset.id);
+  if (act === 'mail-leer') return leerPdfsCorreo(b.dataset.id);
   if (!MX) return;
   if (act === 'mx-att') { const r = MX.rows[i], a = b.dataset.a; r.docs = r.docs.includes(a) ? r.docs.filter(x => x !== a) : [...r.docs, a]; MX.sueltos = (MX.sueltos || []).filter(x => !MX.rows.some(rr => rr.docs.includes(x))); mxRedraw(); }
   if (act === 'mx-del') { MX.rows.splice(i, 1); if (!MX.rows.length) return closeDrawer(); mxRedraw(); }
-  if (act === 'mx-add') { MX.rows.push({ asegurado: '', picked: '', clienteId: '', polizaId: '', certificado: '', numero: '', notas: '', monto: '', cheque: '', docs: [], tramiteId: '' }); mxRedraw(); $(`#mx-nombre-${MX.rows.length - 1}`)?.focus(); }
+  if (act === 'mx-add') { const last = MX.rows[MX.rows.length - 1]; MX.rows.push(filaNueva(last ? { clienteId: last.clienteId, clienteTxt: last.clienteTxt, polizaId: last.polizaId, polizaTxt: last.polizaTxt } : {})); mxRedraw(); $(`#mx${MX.rows.length - 1}-asegurado`)?.focus(); }
   if (act === 'mx-unlink') { MX.rows[i].tramiteId = ''; mxRedraw(); }
   if (act === 'mx-go') guardarVarios(b);
 });
 
 async function guardarVarios(btn) {
   const m = MX.mail, pagos = MX.mode === 'pagos';
-  const malas = MX.rows.map((r, i) => r.clienteId ? -1 : i).filter(i => i >= 0);
-  if (malas.length) { toast(`Falta elegir de quién es la fila ${malas.map(i => i + 1).join(', ')}`, 'err'); $(`#mx-nombre-${malas[0]}`)?.focus(); return; }
+  const malas = MX.rows.map((r, i) => r.clienteId || limpiar(r.clienteTxt) ? -1 : i).filter(i => i >= 0);
+  if (malas.length) { toast(`Falta el cliente en la fila ${malas.map(i => i + 1).join(', ')}`, 'err'); $(`#mx${malas[0]}-cliente`)?.focus(); return; }
   if (pagos && MX.rows.some(r => !(toNum(r.monto) > 0))) { toast('Escribe el monto de cada pago', 'err'); return; }
   btn.disabled = true;
   try {
-    // Copiar a Drive los adjuntos elegidos, en la carpeta de cada cliente
+    // 1. Crear lo que falte (clientes, pólizas, asegurados)
+    for (const r of MX.rows) await asegurarEntidades(r, MX.aseguradora);
+    // 2. Los PDF: si ya están en Drive se usan; si vienen del correo se copian a la carpeta del cliente
     const docBy = {};
     const porCliente = {};
-    MX.rows.forEach(r => r.docs.forEach(a => { (porCliente[r.clienteId] = porCliente[r.clienteId] || new Set()).add(a); }));
+    MX.rows.forEach(r => r.docs.forEach(a => { const x = mxAtt(a); if (x?.doc) docBy[r.clienteId + a] = x.doc; else (porCliente[r.clienteId] = porCliente[r.clienteId] || new Set()).add(a); }));
     for (const [cid, set] of Object.entries(porCliente)) {
       const ids = [...set];
-      if (S.mode === 'demo') ids.forEach(a => { const x = mxAtt(a); docBy[cid + a] = { id: 'demo-' + a, name: x.name, size: x.size }; });
+      if (S.mode === 'demo' || !m) ids.forEach(a => { const x = mxAtt(a); if (x) docBy[cid + a] = { id: 'demo-' + a, name: x.name, size: x.size }; });
       else {
         toast('Guardando adjuntos en Drive…');
         const r = await api('api/gmail', { json: { id: m.id, cuenta: m.cuenta, attachments: ids, folder: clienteNombre(cid) } });
@@ -258,12 +264,13 @@ async function guardarVarios(btn) {
       }
     }
     const docsDe = r => r.docs.map(a => docBy[r.clienteId + a]).filter(Boolean);
+    const fecha = (m?.fecha || nowISO()).slice(0, 10);
     const hechos = [];
     for (const r of MX.rows) {
       const p = poliza(r.polizaId);
       if (pagos) {
         const t = tramite(r.tramiteId);
-        const pg = { id: '', tramiteId: r.tramiteId, clienteId: r.clienteId, aseguradora: MX.aseguradora || t?.aseguradora || p?.aseguradora || '', forma: r.cheque ? 'Cheque' : 'Depósito', numero: r.cheque, banco: '', monto: toNum(r.monto), fechaAviso: (m.fecha || nowISO()).slice(0, 10), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: r.cheque ? 'disponible' : 'depositado', notas: r.notas || m.subject || '' };
+        const pg = { id: '', tramiteId: r.tramiteId, clienteId: r.clienteId, aseguradora: MX.aseguradora || t?.aseguradora || p?.aseguradora || '', forma: r.cheque ? 'Cheque' : 'Depósito', numero: r.cheque, banco: '', monto: toNum(r.monto), fechaAviso: fecha, fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: r.cheque ? 'disponible' : 'depositado', notas: r.notas || m?.subject || '' };
         if (pg.estado === 'depositado') pg.fechaEntregado = pg.fechaAviso;
         await save('pagos', pg, `${pg.forma} ${pg.numero} por ${fmtMoney(pg.monto)} (${shortName(r.asegurado || clienteNombre(r.clienteId))})`);
         await linkPagoTramite(pg, true);
@@ -276,30 +283,24 @@ async function guardarVarios(btn) {
         if (r.numero && !t.numeroReclamo) { t.numeroReclamo = r.numero; cambios.push(`número ${r.numero}`); }
         const nuevos = docsDe(r); if (nuevos.length) { t.docs = [...(t.docs || []), ...nuevos]; cambios.push(`${nuevos.length} PDF`); }
         if (r.notas && !t.descripcion) t.descripcion = r.notas;
+        if (r.monto && !t.monto) t.monto = toNum(r.monto);
+        if (r.paciente && !t.paciente) { t.paciente = r.paciente; t.parentesco = r.parentesco; }
         let accion;
         if (r.numero && ['recibido', 'ingresado'].includes(t.etapa)) { t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO(); accion = 'movió'; }
-        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `Del correo "${m.subject}": ${cambios.join(', ') || 'revisado'}.` }];
-        await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'} (correo con varios reclamos)`, accion);
+        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `${m ? `Del correo "${m.subject}"` : 'Del PDF'}: ${cambios.join(', ') || 'revisado'}.` }];
+        await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'}`, accion);
         hechos.push(t);
       } else {
         const etapa = r.numero ? 'numero' : (MX.kind === 'solicitud' ? 'recibido' : 'ingresado');
-        const nombre = r.asegurado || clienteNombre(r.clienteId);
-        const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Recibido en el correo "${m.subject}".` }];
-        if (r.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${r.numero}.` });
-        const nt = {
-          id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: r.clienteId, polizaId: r.polizaId, aseguradora: p?.aseguradora || MX.aseguradora || '',
-          asegurado: nombre, certificado: r.certificado, asunto: `Reclamo de ${shortName(nombre)}`, descripcion: r.notas, canal: CANALES[0], etapa, numeroReclamo: r.numero,
-          monto: toNum(r.monto) || '', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), fechaIngreso: etapa === 'recibido' ? '' : todayISO(),
-          responsable: S.me.email, visibleCliente: true, notaCliente: '', docs: docsDe(r), eventos: ev, gmailId: m.id
-        };
-        await save('tramites', nt, `${nt.codigo} Reclamo · ${nombre}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
+        const nt = nuevoReclamo(r, { etapa, fecha: r.fecha || fecha, gmailId: m?.id || '', docs: docsDe(r), aseguradora: MX.aseguradora, origen: m ? `Recibido en el correo "${m.subject}".` : 'Leído del PDF.' });
+        await save('tramites', nt, `${nt.codigo} Reclamo · ${shortName(clienteNombre(nt.clienteId))}${nt.asegurado !== clienteNombre(nt.clienteId) ? ' › ' + nt.asegurado : ''}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
         hechos.push(nt);
       }
     }
     const n = hechos.length;
-    await markMail(m.id, pagos ? `${n} pagos registrados` : `${n} reclamos: ${hechos.map(h => h.codigo).filter(Boolean).join(', ')}`, hechos[0]?.id || hechos[0]?.tramiteId);
+    if (m) await markMail(m.id, pagos ? `${n} pagos registrados` : `${n} reclamos: ${hechos.map(h => h.codigo).filter(Boolean).join(', ')}`, hechos[0]?.id || hechos[0]?.tramiteId);
     MX = null;
     closeDrawer(); render(false);
     toast(pagos ? `${n} ${n === 1 ? 'pago registrado' : 'pagos registrados'}` : `${n} ${n === 1 ? 'reclamo guardado' : 'reclamos guardados'}`);
-  } catch (e) { btn.disabled = false; toast('No se terminó: ' + e.message, 'err'); }
+  } catch (e) { btn.disabled = false; toast('No se terminó: ' + e.message, 'err'); render(false); }
 }

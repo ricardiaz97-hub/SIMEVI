@@ -85,13 +85,7 @@ document.addEventListener('click', async e => {
       c.portal = token(); await save('clientes', c, `${c.nombre}: enlace del portal cambiado`); closeDrawer(true); openCliente(c.id); toast('Enlace nuevo creado'); break;
     }
     case 'portal-back': go('clientes'); break;
-    case 'rx-clear': RX = RX_BLANK(); rxKeep(); render(false); $('#rx-nombre')?.focus(); break;
-    case 'rx-new-cliente': {
-      const name = $('#rx-nombre').value.trim(); cbClose($('#rx-nombre').closest('.cb'));
-      openCliente(null, { nombre: name });
-      cur.afterSave = c => { pick('nombre', { kind: 'cli', label: c.nombre, clienteId: c.id }); render(false); toast('Cliente creado. Ahora agrega su póliza si no está.'); $('#rx-poliza')?.focus(); };
-      break;
-    }
+    case 'rx-clear': RX = filaNueva(); rxKeep(); render(false); $('#rx-cliente')?.focus(); break;
     case 'doc-del': {
       const i = +el.dataset.i; const doc = cur.row.docs[i];
       if (!await ask(`¿Quitar ${doc.name} de este registro? El archivo sigue en Drive.`, { ok: 'Quitar' })) break;
