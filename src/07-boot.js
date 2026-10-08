@@ -177,7 +177,6 @@ function renderGate(msg) {
   const s = S.sess || {};
   $('#root').innerHTML = `<div class="gate"><div class="panel gate-card flash">
     <img src="img/logo-full.webp" alt="SIMEVI Corredores de Seguros">
-    <span class="greek" aria-hidden="true">ΑΣΦΑΛΕΙΑ</span>
     ${s.configured === false ? `<p>Falta configurar la app en Vercel: ${esc((s.missing || []).join(', '))}.</p><a class="btn" href="api/diagnose">Ver diagnóstico</a>`
       : `<p>Entra con tu cuenta de Google. Solo Silvia y Ricardo tienen acceso.</p><div id="gsi"></div>${msg ? `<div class="gate-err">${esc(msg)}</div>` : ''}`}
   </div></div>`;

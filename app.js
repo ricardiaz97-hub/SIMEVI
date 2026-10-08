@@ -118,7 +118,7 @@ const nextCodigo = () => {
 };
 
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v2';
+const DEMO_KEY = 'simevi-demo-v3';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -294,8 +294,14 @@ function seedDemo() {
     { id: 'g4', tramiteId: '', clienteId: 'c2', aseguradora: 'Seguros del Pacífico', forma: 'Cheque', numero: '0098812', banco: 'Banco Davivienda', monto: 260, fechaAviso: D(0), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: 'disponible', notas: 'Devolución de prima por ajuste de suma asegurada.', ...by(R, 0, 8) }
   ];
 
-  const mail = (id, n, h, from, fromName, subject, snippet, attachments = []) => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments });
+  const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '') => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body });
   const inbox = [
+    mail('m7', 0, 9, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Reembolsos de gastos médicos de septiembre', 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American…', [
+      { id: 'a6', name: 'Reembolso Karla Ventura.pdf', size: 410000, mime: 'application/pdf' },
+      { id: 'a7', name: 'Reembolso Luis Pineda.pdf', size: 655000, mime: 'application/pdf' },
+      { id: 'a8', name: 'Reembolso Mauricio Guardado.pdf', size: 302000, mime: 'application/pdf' }
+    ], 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American:\n1. Karla Beatriz Ventura: consulta de control y exámenes de laboratorio, $145.00\n2. Luis Alonso Pineda: terapia física, 6 sesiones, $210.00\n3. Mauricio Guardado Ayala: medicamentos de septiembre, $86.40\nVan los PDF con facturas y recetas. Saludos.'),
+    mail('m8', 0, 7, 'reclamos@palig.com', 'Pan-American Life Reclamos', 'Registro de reclamos · Póliza GMC-118734', 'Le confirmamos el registro de los siguientes reclamos de la póliza GMC-118734…', [], 'Estimado corredor, le confirmamos el registro de los siguientes reclamos de la póliza GMC-118734 (Grupo Agroindustrial Las Brisas):\n- Luis Alonso Pineda: reclamo PAL-GM-2026-31902\n- Mauricio Guardado Ayala: reclamo PAL-GM-2026-31903\nTiempo estimado de respuesta: 8 días hábiles.'),
     mail('m1', 0, 8, 'reclamos@sisa.com.sv', 'SISA Reclamos', 'Cheque disponible · Reclamo VI-RC-2026-7731', 'Estimado corredor: le informamos que el cheque No. 00421190 por $400.00 a favor de Marta Elena Rivas de Henríquez se encuentra disponible en caja, Colonia Escalón.', []),
     mail('m2', 0, 7, 'notificaciones@fedecredito.com.sv', 'Seguros Fedecrédito', 'Registro de reclamo APC-2026-0091', 'Su reclamo ha sido registrado con el número de reclamo APC-R-26-00387 para la póliza APC-2026-0091 (Colegio Bilingüe San Gabriel). Tiempo estimado de respuesta: 10 días hábiles.', []),
     mail('m3', -1, 17, 'jralfaro.m@hotmail.com', 'José Roberto Alfaro', 'Facturas de taller para mi reclamo', 'Buenas tardes, les adjunto la factura del taller y la proforma de repuestos que me pidió MAPFRE. Póliza AU-2025-602917.', [{ id: 'a1', name: 'Factura taller Autofix.pdf', size: 380000, mime: 'application/pdf' }, { id: 'a2', name: 'Proforma repuestos.pdf', size: 214000, mime: 'application/pdf' }]),
@@ -535,7 +541,6 @@ VIEWS.inicio = () => {
   return `
   <section class="hello">
     <div class="panel hello-main flash">
-      <span class="greek" aria-hidden="true">ΑΣΦΑΛΕΙΑ</span>
       <span class="when">${esc(hoy)}</span>
       <h1>${saludo}, <span>${esc(firstName(S.me))}</span></h1>
       <p>${mine ? `Hay ${mine} ${mine === 1 ? 'cosa pendiente' : 'cosas pendientes'} entre los dos. Lo más urgente está arriba.` : 'Todo al día. No hay trámites por ingresar ni pagos por entregar.'}</p>
@@ -899,35 +904,34 @@ const CB = {
     }
     return opts.map(o => ({ ...o, s: score(o.find, q) && score(o.find, q) + (o.bonus || 0) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
   },
-  poliza(q) {
-    return DB.polizas.filter(p => !p.cancelada && (!RX.clienteId || p.clienteId === RX.clienteId))
+  poliza(q, st = RX) {
+    return DB.polizas.filter(p => !p.cancelada && (!st.clienteId || p.clienteId === st.clienteId))
       .map(p => ({ kind: 'pol', label: p.numero, sub: `${p.ramo} · ${p.aseguradora} · ${shortName(clienteNombre(p.clienteId))}`, find: `${p.numero} ${p.ramo} ${p.aseguradora} ${clienteNombre(p.clienteId)}`, polizaId: p.id, clienteId: p.clienteId }))
       .map(o => ({ ...o, s: score(o.find, q) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
   },
-  cert(q) {
-    const p = poliza(RX.polizaId);
+  cert(q, st = RX) {
+    const p = poliza(st.polizaId);
     return (p?.asegurados || []).filter(a => a.certificado || a.nombre)
       .map(a => ({ kind: 'cert', label: a.certificado || '-', sub: a.nombre, find: `${a.certificado} ${a.nombre} ${a.documento}`, nombre: a.nombre }))
       .map(o => ({ ...o, s: score(o.find, q) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
   }
 };
 
-function pick(name, o) {
+function pick(name, o, st = RX) {
   if (name === 'nombre') {
-    RX.asegurado = o.label; RX.picked = o.label; RX.clienteId = o.clienteId;
-    if (o.kind === 'aseg') { RX.polizaId = o.polizaId; RX.certificado = o.certificado; }
+    st.asegurado = o.label; st.picked = o.label; st.clienteId = o.clienteId;
+    if (o.kind === 'aseg') { st.polizaId = o.polizaId; st.certificado = o.certificado; }
     else {
       const ps = DB.polizas.filter(p => p.clienteId === o.clienteId && !p.cancelada);
-      if (!ps.some(p => p.id === RX.polizaId)) RX.polizaId = ps.length === 1 ? ps[0].id : '';
+      if (!ps.some(p => p.id === st.polizaId)) st.polizaId = ps.length === 1 ? ps[0].id : '';
     }
   }
   if (name === 'poliza') {
-    RX.polizaId = o.polizaId;
-    if (RX.clienteId !== o.clienteId) { RX.clienteId = o.clienteId; if (!RX.asegurado || RX.picked !== RX.asegurado) { RX.asegurado = clienteNombre(o.clienteId); RX.picked = RX.asegurado; } }
+    st.polizaId = o.polizaId;
+    if (st.clienteId !== o.clienteId) { st.clienteId = o.clienteId; if (!st.asegurado || st.picked !== st.asegurado) { st.asegurado = clienteNombre(o.clienteId); st.picked = st.asegurado; } }
   }
-  if (name === 'cert') { RX.certificado = o.label; if (!RX.asegurado || RX.asegurado === clienteNombre(RX.clienteId)) { RX.asegurado = o.nombre; RX.picked = o.nombre; } }
-  rxKeep();
-  syncEntry();
+  if (name === 'cert') { st.certificado = o.label; if (!st.asegurado || st.asegurado === clienteNombre(st.clienteId)) { st.asegurado = o.nombre; st.picked = o.nombre; } }
+  if (st === RX) { rxKeep(); syncEntry(); } else syncMx(st);
 }
 
 /* Pinta en la fila de ingreso lo que ya se sabe */
@@ -971,7 +975,7 @@ VIEWS.reclamos = () => {
 
   return head('Reclamos', 'Escribe en la primera fila y pulsa Enter. Nombre, póliza y certificado buscan mientras escribes y se llenan entre sí.') + `
   <div class="rx-entry">
-    <span class="rx-title"><span class="greek" aria-hidden="true">ΑΙΤΗΜΑ</span>Nuevo reclamo</span>
+    <span class="rx-title">Nuevo reclamo</span>
     <div class="rx-grid rx-head" aria-hidden="true"><span>Nombre</span><span>Póliza</span><span>Cert.</span><span>PDF</span><span>N.º de reclamo</span><span>Notas</span><span></span></div>
     <form class="rx-grid rx-new" id="rx-new" autocomplete="off">
       <div class="rx-cell" data-l="Nombre">${comboHTML('nombre', 'rx-nombre', 'Nombre del asegurado', RX.asegurado, 'Asegurado o cliente')}</div>
@@ -1014,12 +1018,13 @@ VIEWS.reclamos = () => {
 
 /* --- comportamiento de las listas (el estado vive en cada caja) --- */
 const finePointer = () => matchMedia('(hover:hover) and (pointer:fine)').matches;
+const cbState = box => { const r = box.closest('[data-mx]'); return r ? MX.rows[+r.dataset.mx] : RX; };
 function cbOpen(input) {
   const box = input.closest('.cb'); const name = box.dataset.cb; const list = $('.cb-list', box);
-  const v = input.value.trim();
-  box._opts = CB[name](v); box._active = box._opts.length && v ? 0 : -1;
+  const v = input.value.trim(); const st = cbState(box);
+  box._opts = CB[name](v, st); box._active = box._opts.length && v ? 0 : -1;
   if (!box._opts.length) {
-    list.innerHTML = v ? `<li class="cb-empty">Sin coincidencias${name === 'nombre' ? `. <button type="button" data-act="rx-new-cliente">Crear cliente “${esc(v)}”</button>` : ''}</li>` : `<li class="cb-empty">${name === 'cert' ? (RX.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
+    list.innerHTML = v ? `<li class="cb-empty">Sin coincidencias${name === 'nombre' && st === RX ? `. <button type="button" data-act="rx-new-cliente">Crear cliente “${esc(v)}”</button>` : ''}</li>` : `<li class="cb-empty">${name === 'cert' ? (st.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
   } else list.innerHTML = box._opts.map((o, i) => `<li role="option" id="${input.id}-o${i}" data-i="${i}" aria-selected="${i === box._active}"><span class="cb-l">${mark(o.label, v)}</span><span class="cb-s">${mark(o.sub, v)}</span></li>`).join('');
   list.hidden = false; input.setAttribute('aria-expanded', 'true');
   input.setAttribute('aria-activedescendant', box._active >= 0 ? `${input.id}-o${box._active}` : '');
@@ -1036,7 +1041,7 @@ function cbMove(input, d) {
 }
 function cbChoose(input, i) {
   const box = input.closest('.cb'); const o = box._opts?.[i]; if (!o) return false;
-  pick(box.dataset.cb, o);
+  pick(box.dataset.cb, o, cbState(box));
   input.value = o.label;
   cbClose(box);
   return true;
@@ -1044,16 +1049,16 @@ function cbChoose(input, i) {
 // Al salir sin elegir: si lo escrito coincide con una sola opción exacta, se toma esa.
 function cbAutoMatch(input) {
   const box = input.closest('.cb'); if (!box) return;
-  const name = box.dataset.cb, v = input.value.trim();
+  const name = box.dataset.cb, v = input.value.trim(), st = cbState(box);
   if (!v) return;
-  if (name === 'nombre' && RX.picked && norm(RX.picked) === norm(v)) return;
-  const opts = CB[name](v);
+  if (name === 'nombre' && st.picked && norm(st.picked) === norm(v)) return;
+  const opts = CB[name](v, st);
   const exact = opts.filter(o => norm(o.label) === norm(v) || (name === 'nombre' && o.find && norm(o.find).split(' ').includes(norm(v))));
   const only = exact.length === 1 ? exact[0] : (opts.length === 1 && opts[0].s >= 4 ? opts[0] : null);
-  if (only) { pick(name, only); input.value = only.label; }
+  if (only) { pick(name, only, st); input.value = only.label; }
 }
 
-document.addEventListener('focusin', e => { const i = e.target.closest?.('.cb input'); if (i && S.route === 'reclamos' && (i.value || finePointer())) cbOpen(i); });
+document.addEventListener('focusin', e => { const i = e.target.closest?.('.cb input'); if (i && (S.route === 'reclamos' || i.closest('.drawer')) && (i.value || finePointer())) cbOpen(i); });
 document.addEventListener('focusout', e => {
   const i = e.target.closest?.('.cb input'); if (!i) return;
   setTimeout(() => { const box = i.closest('.cb'); if (box && !box.contains(document.activeElement)) { cbAutoMatch(i); cbClose(box); } }, 120);
@@ -1061,12 +1066,13 @@ document.addEventListener('focusout', e => {
 document.addEventListener('input', e => {
   const i = e.target.closest?.('.cb input');
   if (i) {
-    const name = i.closest('.cb').dataset.cb, v = i.value;
-    if (name === 'nombre') { RX.asegurado = v; if (norm(v) !== norm(RX.picked)) { RX.picked = ''; if (!v) { RX.clienteId = ''; RX.polizaId = ''; RX.certificado = ''; } } }
-    if (name === 'poliza') { RX.polizaTxt = v; if (!v) RX.polizaId = ''; }
-    if (name === 'cert') RX.certificado = v;
-    rxKeep(); cbOpen(i);
-    if (!v && name === 'nombre') syncEntry();
+    const box = i.closest('.cb'), name = box.dataset.cb, v = i.value, st = cbState(box);
+    if (name === 'nombre') { st.asegurado = v; if (norm(v) !== norm(st.picked)) { st.picked = ''; if (!v) { st.clienteId = ''; st.polizaId = ''; st.certificado = ''; } } }
+    if (name === 'poliza') { st.polizaTxt = v; if (!v) st.polizaId = ''; }
+    if (name === 'cert') st.certificado = v;
+    if (st === RX) rxKeep();
+    cbOpen(i);
+    if (!v && name === 'nombre') st === RX ? syncEntry() : syncMx(st);
     return;
   }
   const r = e.target.dataset?.rx; if (r) { RX[r] = e.target.value; rxKeep(); }
@@ -1088,11 +1094,11 @@ document.addEventListener('pointerdown', e => {
   cbChoose(input, +li.dataset.i); focusNext(input);
 });
 function focusNext(input) {
-  // Salta a la siguiente casilla vacía de la fila
-  const order = ['rx-nombre', 'rx-poliza', 'rx-cert', 'rx-num', 'rx-notas'];
-  const k = order.indexOf(input.id);
-  for (const id of order.slice(k + 1)) { const el = $('#' + id); if (el && !el.value) return el.focus(); }
-  $('#rx-notas')?.focus();
+  // Salta a la siguiente casilla vacía de la misma fila
+  const row = input.closest('.rx-new, .mx-row'); if (!row) return;
+  const all = $$('input[type=text]', row);
+  const rest = all.slice(all.indexOf(input) + 1);
+  (rest.find(el => !el.value) || rest[rest.length - 1])?.focus();
 }
 
 /* --- guardar --- */
@@ -1259,7 +1265,14 @@ async function savePago(to) {
   const desc = `${p.forma} ${p.numero || ''} por ${fmtMoney(p.monto)} (${clienteNombre(p.clienteId).split(',')[0]})`.replace(/\s+/g, ' ');
   try { await save('pagos', p, to ? `${desc}: ${PAGO_E[p.estado].n.toLowerCase()}` : desc, to ? 'movió' : undefined); } catch (e) { return; }
   if (cur.afterSave) { const fn = cur.afterSave; cur.afterSave = null; await fn(p); }
-  // El trámite ligado avanza solo
+  await linkPagoTramite(p, isNew);
+  if (!pagoAbierto(p) && (to || isNew)) celebrate();
+  closeDrawer(); render(false);
+  toast(isNew ? 'Pago registrado' : to ? `Pago: ${PAGO_E[p.estado].n}` : 'Cambios guardados');
+}
+
+// El trámite ligado avanza solo: pago registrado → Pago disponible; pago entregado → Cerrado.
+async function linkPagoTramite(p, isNew) {
   const t = tramite(p.tramiteId);
   if (t && isNew && tramiteAbierto(t) && t.etapa !== 'pago') {
     t.etapa = 'pago'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.forma} disponible por ${fmtMoney(p.monto)}.` }];
@@ -1269,9 +1282,6 @@ async function savePago(to) {
     t.etapa = 'cerrado'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.estado === 'depositado' ? 'Depositado' : 'Entregado a ' + p.entregadoA}. Cerrado.` }];
     await save('tramites', t, `${t.codigo} a Cerrado`, 'movió').catch(() => { });
   }
-  if (!pagoAbierto(p) && (to || isNew)) celebrate();
-  closeDrawer(); render(false);
-  toast(isNew ? 'Pago registrado' : to ? `Pago: ${PAGO_E[p.estado].n}` : 'Cambios guardados');
 }
 
 function exportPagos() {
@@ -1490,7 +1500,6 @@ async function renderPortal(tok) {
   };
   root.innerHTML = `<div class="portal enter">
     <div class="portal-top"><img src="img/logo-full.webp" alt="SIMEVI Corredores de Seguros">${staff ? `<button class="btn sm" type="button" data-act="portal-back">${ic('caret-left')}Volver a la app</button>` : ''}</div>
-    <span class="greek" aria-hidden="true">ΕΙΡΗΝΗ ΥΜΙΝ</span>
     <h1 style="margin:8px 0 6px">Hola, ${esc(String(data.cliente.nombre).split(/,| S\.A\./)[0])}</h1>
     <p class="muted" style="margin:0 0 24px">Aquí puedes ver en qué va cada gestión que hacemos por ti con tu aseguradora.</p>
     ${(data.pagos || []).map(p => `<div class="banner">${ic('hand-coins')}<span>${p.forma === 'Cheque' ? `Tu cheque de ${esc(p.aseguradora)} por <b>${fmtMoney(p.monto)}</b> ${p.estado === 'oficina' ? 'ya está en nuestra oficina. Te avisamos para coordinar la entrega.' : 'está listo; vamos a recogerlo por ti.'}` : `${esc(p.aseguradora)} depositó <b>${fmtMoney(p.monto)}</b>.`}</span></div>`).join('')}
@@ -1527,7 +1536,7 @@ function classify(m) {
     .filter(x => !polizas.has(norm(x[2])))
     .sort((a, b) => (b[1] ? 1 : 0) - (a[1] ? 1 : 0));
   const num = cands[0] ? [cands[0][0], cands[0][2]] : null;
-  if (/cheque\s+(?:n[°oº.]*\s*\d+\s+)?.*disponible|cheque disponible|dep[oó]sito|transferencia|abono\s+en\s+cuenta/i.test(txt) && r.aseguradora) {
+  if (/cheques?\b.*disponibles?|disponibles?\b.*cheques?|dep[oó]sito|transferencia|abono\s+en\s+cuenta/i.test(txt) && r.aseguradora) {
     r.kind = 'pago';
     r.forma = /cheque/i.test(txt) ? 'Cheque' : /transferencia/i.test(txt) ? 'Transferencia' : 'Depósito';
     r.numero = cheque?.[1] || ref?.[1] || '';
@@ -1572,24 +1581,30 @@ VIEWS.bandeja = () => {
     const t = tramite(k.tramiteId), c = cliente(k.clienteId);
     const done = DB.correos.find(x => x.id === m.id);
     let acts = '';
-    if (!done) {
+    const x = !done ? extraer(m) : null;
+    const varios = x && x.rows.length > 1;
+    if (varios) {
+      acts += `<button class="btn primary sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">${ic('list-bullets')}Revisar los ${x.rows.length}</button>`;
+      acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
+    } else if (!done) {
       if (k.kind === 'pago') acts += `<button class="btn primary sm" type="button" data-act="mail-pago" data-id="${esc(m.id)}">${ic('hand-coins')}Registrar pago</button>`;
       else if (k.kind === 'numero') acts += `<button class="btn primary sm" type="button" data-act="mail-numero" data-id="${esc(m.id)}">${ic('seal-check')}${t ? 'Poner número en ' + esc(t.codigo) : 'Asignar a un trámite'}</button>`;
       else acts += `<button class="btn primary sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">${ic('plus')}Crear trámite</button>`;
       if (k.kind !== 'solicitud') acts += `<button class="btn sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">Crear trámite</button>`;
+      if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += `<button class="btn sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">Separar en varios</button>`;
       acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
     } else acts = `<span class="tag">${av(done.creadoPor, 'sm')}${esc(done.nota || 'Procesado')}</span>`;
     if (S.mode === 'live') acts += `<a class="btn ghost sm" href="https://mail.google.com/mail/u/0/#all/${esc(m.threadId || m.id)}" target="_blank" rel="noopener">${ic('arrow-square-out')}Gmail</a>`;
     return `<article class="mail ${done ? 'done' : ''}">
-      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b><span class="faint">${fmtAgo(m.fecha)}</span><span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span></div>
+      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b><span class="faint">${fmtAgo(m.fecha)}</span>${varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>` : `<span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span>`}</div>
       <h3>${esc(m.subject || '(sin asunto)')}</h3>
       <p>${esc(m.snippet || '')}</p>
       <div class="found">
-        ${c ? `<span class="tag">${ic('user')}${esc(c.nombre.split(',')[0])}</span>` : `<span class="tag faint">${ic('user')}Cliente no reconocido</span>`}
+        ${varios ? x.rows.map(r => `<span class="tag">${ic('user')}${esc(shortName(r.asegurado || 'Sin nombre'))}${r.numero ? ' · ' + esc(r.numero) : ''}${r.cheque ? ' · ch. ' + esc(r.cheque) : ''}${r.monto ? ' · ' + fmtMoney(r.monto) : ''}</span>`).join('') : c ? `<span class="tag">${ic('user')}${esc(c.nombre.split(',')[0])}</span>` : `<span class="tag faint">${ic('user')}Cliente no reconocido</span>`}
         ${k.polizaNum ? `<span class="tag">${ic('shield-check')}${esc(k.polizaNum)}</span>` : ''}
-        ${k.reclamo ? `<span class="tag">${ic('seal-check')}${esc(k.reclamo)}</span>` : ''}
-        ${k.monto ? `<span class="tag">${ic('money-wavy')}${fmtMoney(k.monto)}</span>` : ''}
-        ${t ? `<span class="tag">${ic('folder-open')}${esc(t.codigo)}</span>` : ''}
+        ${k.reclamo && !varios ? `<span class="tag">${ic('seal-check')}${esc(k.reclamo)}</span>` : ''}
+        ${k.monto && !varios ? `<span class="tag">${ic('money-wavy')}${fmtMoney(k.monto)}</span>` : ''}
+        ${t && !varios ? `<span class="tag">${ic('folder-open')}${esc(t.codigo)}</span>` : ''}
         ${(m.attachments || []).map(a => `<span class="attach">${ic('paperclip')}${esc(a.name)}</span>`).join('')}
       </div>
       <div class="acts">${acts}</div>
@@ -1713,6 +1728,312 @@ VIEWS.ajustes = () => {
     </div></div>
   </div>`;
 };
+
+/* ---------- Correos con varios reclamos o varios cheques ----------
+   Lee el correo línea por línea: cada persona conocida (asegurado de una colectiva o cliente),
+   cada número de reclamo y cada cheque arma una fila. Los adjuntos se reparten por el nombre
+   del archivo. Todo queda en una tabla para revisar antes de crear nada. */
+
+const flatLine = s => norm(s).replace(/[ \t\r]+/g, ' ');
+const wb = p => new RegExp(`(^|[^a-z0-9])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9])`);
+
+function personas() {
+  const out = [];
+  DB.polizas.filter(p => p.modalidad === 'Colectiva' && !p.cancelada).forEach(p => (p.asegurados || []).forEach(a => {
+    if (a.nombre && !/planilla|anexo|·/i.test(a.nombre)) out.push({ kind: 'aseg', nombre: a.nombre, clienteId: p.clienteId, polizaId: p.id, certificado: a.certificado || '', gm: p.ramo === 'Gastos médicos' });
+  }));
+  DB.clientes.forEach(c => out.push({ kind: 'cli', nombre: c.nombre, clienteId: c.id }));
+  for (const x of out) {
+    const t = norm(x.nombre).replace(/[^a-z0-9ñ ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['de', 'del', 'la', 'los', 'sa', 'cv'].includes(w));
+    x.pats = [t.join(' ')];
+    if (t.length >= 3) x.pats.push(`${t[0]} ${t[1]}`, `${t[0]} ${t[2]}`, `${t[0]} ${t[t.length - 1]}`);
+    x.pats = [...new Set(x.pats)].filter(p => p.length >= 7).map(wb);
+  }
+  return out;
+}
+// Quién se menciona en un texto (sin repetir; el asegurado de gastos médicos gana)
+function quienes(text, gente) {
+  const f = flatLine(text);
+  const hits = gente.filter(x => x.pats.some(r => r.test(f)));
+  const best = new Map();
+  for (const h of hits) {
+    const k = norm(h.nombre);
+    const prev = best.get(k);
+    if (!prev || (h.kind === 'aseg' && prev.kind === 'cli') || (h.gm && !prev.gm)) best.set(k, h);
+  }
+  // si "Karla Ventura" y "Grupo Las Brisas" salen en la misma línea, el asegurado basta
+  const list = [...best.values()];
+  return list.filter(x => !(x.kind === 'cli' && list.some(y => y.kind === 'aseg' && y.clienteId === x.clienteId)));
+}
+
+const RE_RECLAMO = /(n[uú]mero\s+de\s+)?(?:reclamo|siniestro|caso|gesti[oó]n)\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*([A-Z]{1,6}-[A-Z0-9-]*\d[A-Z0-9-]*|\d{5,})/gi;
+const RE_CODIGO = /\b([A-Z]{1,6}-[A-Z]{0,6}-?\d{2,4}-\d{3,6})\b/g; // números sueltos tipo PAL-GM-2026-31902
+const RE_CHEQUE = /cheque\s*(?:n[°oº.]*|#|n[uú]mero)?\s*:?\s*(\d{5,})/gi;
+const RE_MONTO = /(?:US)?\$\s?([\d.,]+\d)/;
+// "Karla Ventura: consulta y exámenes, $145" → "consulta y exámenes, $145"
+function limpiaNota(nota, w, nums) {
+  let n = nota;
+  const m = n.match(/^([^:–-]{3,80})[:–-]\s*(.+)$/);
+  if (m && w.pats.some(r => r.test(flatLine(m[1])))) n = m[2];
+  nums.forEach(x => { n = n.replace(new RegExp(x.replace(/[-]/g, '\\-'), 'i'), ''); });
+  n = n.replace(/\b(reclamo|siniestro|n[uú]mero)\b\s*(n[°oº.]*|#)?\s*:?\s*$/i, '').replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '');
+  return n;
+}
+const toNum = s => +String(s).replace(/,(?=\d{3}\b)/g, '').replace(/,/g, '');
+
+function extraer(m) {
+  const k = classify(m);
+  const gente = personas();
+  const polizas = new Set(DB.polizas.map(p => norm(p.numero)));
+  const texto = [m.subject || '', m.body || m.snippet || ''].join('\n');
+  const lines = texto.split(/\n|;|•/).map(s => s.trim()).filter(Boolean);
+  const items = [];
+  const numsIn = l => {
+    const out = [...l.matchAll(RE_RECLAMO)].map(x => x[2].toUpperCase());
+    [...l.matchAll(RE_CODIGO)].forEach(x => out.push(x[1].toUpperCase()));
+    return [...new Set(out)].filter(n => !polizas.has(norm(n)));
+  };
+  for (const l of lines) {
+    const who = quienes(l, gente);
+    const nums = numsIn(l);
+    const cheques = [...l.matchAll(RE_CHEQUE)].map(x => x[1]);
+    const monto = (l.match(RE_MONTO) || [])[1];
+    const nota = l.replace(/^\s*(?:\d+[.)-]|[-*])\s*/, '').slice(0, 160);
+    if (who.length) {
+      who.forEach((w, i) => {
+        const same = items.find(it => it.persona && norm(it.persona.nombre) === norm(w.nombre));
+        const it = same || { persona: w, docs: [], notas: '' };
+        if (!same) items.push(it);
+        if (who.length === 1) {
+          if (nums.length === 1 && !it.numero) it.numero = nums[0];
+          if (cheques.length === 1 && !it.cheque) it.cheque = cheques[0];
+          if (monto && !it.monto) it.monto = toNum(monto);
+          if (l !== m.subject && !it.notas) it.notas = limpiaNota(nota, w, nums);
+        }
+      });
+    } else if (nums.length || cheques.length) {
+      const last = items[items.length - 1];
+      const lone = nums.length + cheques.length === 1;
+      if (last && lone && ((nums[0] && !last.numero) || (cheques[0] && !last.cheque))) {
+        if (nums[0]) last.numero = nums[0];
+        if (cheques[0]) last.cheque = cheques[0];
+        if (monto && !last.monto) last.monto = toNum(monto);
+      } else if (l !== m.subject || !items.length) {
+        nums.forEach(n => items.push({ numero: n, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
+        cheques.filter(c => !items.some(i => i.cheque === c)).forEach(c => items.push({ cheque: c, docs: [], notas: nota, monto: monto ? toNum(monto) : '' }));
+      }
+    }
+  }
+  // Un número suelto (p. ej. en el asunto) se une a la única persona a la que le puede tocar
+  for (const o of items.filter(i => !i.persona)) {
+    const fits = items.filter(i => i.persona && (!o.numero || !i.numero || i.numero === o.numero) && (!o.cheque || !i.cheque || i.cheque === o.cheque));
+    if (fits.length === 1) {
+      const t = fits[0];
+      t.numero = t.numero || o.numero; t.cheque = t.cheque || o.cheque; t.monto = t.monto || o.monto; t.docs.push(...o.docs);
+      items.splice(items.indexOf(o), 1);
+    }
+  }
+  // Una empresa nombrada de paso ("…de la póliza de Grupo Las Brisas") no es un reclamo aparte
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i], w = it.persona;
+    if (w?.kind === 'cli' && !it.numero && !it.cheque && !it.monto && items.some(o => o !== it && o.persona?.kind === 'aseg' && o.persona.clienteId === w.clienteId)) items.splice(i, 1);
+  }
+  // Adjuntos: por el nombre del archivo
+  const sueltos = [];
+  for (const a of m.attachments || []) {
+    const w = quienes(a.name.replace(/[_.-]+/g, ' '), gente)[0];
+    let it = w && items.find(i => i.persona && norm(i.persona.nombre) === norm(w.nombre));
+    if (w && !it) { it = { persona: w, docs: [], notas: '' }; items.push(it); }
+    if (it) it.docs.push(a.id); else sueltos.push(a.id);
+  }
+  if (!items.length && (m.attachments || []).length >= 2 && /\b(reclamos|reembolsos|siniestros)\b/i.test(texto)) {
+    (m.attachments || []).forEach(a => items.push({ docs: [a.id], notas: a.name.replace(/\.[a-z0-9]+$/i, '') }));
+    sueltos.length = 0;
+  }
+  if (!items.length) items.push({ docs: [], notas: m.subject || '' });
+  if (items.length === 1) items[0].docs.push(...sueltos.splice(0));
+  else { const sin = items.filter(i => !i.docs.length); if (sin.length === sueltos.length) sin.forEach((i, j) => i.docs.push(sueltos[j])), sueltos.length = 0; }
+
+  // Cada fila: datos del cliente y, si existe, el reclamo que ya está abierto
+  const mode = k.kind === 'pago' || items.some(i => i.cheque) ? 'pagos' : 'reclamos';
+  const rows = items.map(it => {
+    const w = it.persona;
+    const r = { asegurado: w?.nombre || '', picked: w?.nombre || '', clienteId: w?.clienteId || k.clienteId || '', polizaId: w?.polizaId || '', certificado: w?.certificado || '', numero: it.numero || '', notas: it.notas || '', monto: it.monto || '', cheque: it.cheque || '', docs: it.docs, tramiteId: '' };
+    if (r.clienteId && !r.polizaId) { const ps = DB.polizas.filter(p => p.clienteId === r.clienteId && !p.cancelada && (!k.aseguradora || p.aseguradora === k.aseguradora)); if (ps.length === 1) r.polizaId = ps[0].id; }
+    if (!r.clienteId && k.polizaId && items.length === 1) { r.polizaId = k.polizaId; r.clienteId = poliza(k.polizaId).clienteId; }
+    let t = r.numero && DB.tramites.find(t => norm(t.numeroReclamo) === norm(r.numero));
+    if (!t && r.clienteId && (k.kind !== 'solicitud' || mode === 'pagos')) {
+      const abiertos = DB.tramites.filter(t => t.tipo === 'Reclamo' && tramiteAbierto(t) && t.clienteId === r.clienteId && (!r.asegurado || !t.asegurado || norm(t.asegurado) === norm(r.asegurado)));
+      t = mode === 'pagos' ? abiertos.find(t => t.etapa !== 'recibido') : abiertos.find(t => !t.numeroReclamo);
+    }
+    if (t) { r.tramiteId = t.id; r.clienteId = t.clienteId; r.polizaId = r.polizaId || t.polizaId; if (!r.asegurado) { r.asegurado = t.asegurado || clienteNombre(t.clienteId); r.picked = r.asegurado; } }
+    if (!r.asegurado && r.clienteId) { r.asegurado = clienteNombre(r.clienteId); r.picked = r.asegurado; }
+    return r;
+  });
+  return { mode, kind: k.kind, aseguradora: k.aseguradora, rows, sueltos };
+}
+
+/* ---------- la hoja para revisar ---------- */
+let MX = null;
+
+function openVarios(mailId) {
+  const m = (S.inbox || []).find(x => x.id === mailId); if (!m) return;
+  const x = extraer(m);
+  MX = { mail: m, ...x };
+  if (MX.rows.length === 1 && (m.attachments || []).length >= 2 && MX.mode === 'reclamos') {
+    // "Separar en varios": una fila por adjunto
+    MX.rows = m.attachments.map(a => ({ ...structuredClone(MX.rows[0]), docs: [a.id], notas: a.name.replace(/\.[a-z0-9]+$/i, '') }));
+  }
+  const d = openDrawer(variosHTML());
+  d.classList.add('wide');
+  MX.rows.forEach(syncMx);
+}
+
+const mxAtt = id => (MX.mail.attachments || []).find(a => a.id === id);
+function variosHTML() {
+  const pagos = MX.mode === 'pagos';
+  const n = MX.rows.length;
+  return `
+  <div class="drawer-h"><div class="t"><span class="label">${esc(MX.mail.fromName || MX.mail.from)} · ${fmtAgo(MX.mail.fecha)}</span><h2>${n} ${pagos ? (n === 1 ? 'pago' : 'pagos') : (n === 1 ? 'reclamo' : 'reclamos')} en este correo</h2>
+    <div class="muted" style="font-size:.86rem;margin-top:4px">${esc(MX.mail.subject || '')}</div></div>
+    <button class="btn ghost icon" type="button" data-act="drawer-close" aria-label="Cerrar">${ic('x')}</button></div>
+  <div class="drawer-b">
+    <p class="muted" style="margin:0 0 14px;font-size:.86rem">Revisa cada fila. Puedes escribir en Nombre, Póliza y Certificado para buscar; ${pagos ? 'cada fila será un pago ligado a su reclamo.' : 'las filas que dicen <b>Actualiza</b> ponen el número o los PDFs en un reclamo que ya existe.'}</p>
+    <details class="mx-mail"><summary>Ver el correo</summary><p>${esc(MX.mail.body || MX.mail.snippet || '').replace(/\n/g, '<br>')}</p></details>
+    <div class="mx-rows">${MX.rows.map((r, i) => mxRowHTML(r, i)).join('')}</div>
+    <button class="btn sm" type="button" data-act="mx-add" style="margin-top:10px">${ic('plus')}Agregar fila</button>
+  </div>
+  <div class="drawer-f"><span class="muted" style="font-size:.8rem">${MX.sueltos?.length ? `${MX.sueltos.length} adjunto${MX.sueltos.length > 1 ? 's' : ''} sin asignar` : ''}</span><span class="spacer"></span>
+    <button class="btn primary" type="button" data-act="mx-go">${ic('check')}${pagos ? `Registrar ${n} ${n === 1 ? 'pago' : 'pagos'}` : `Guardar ${n} ${n === 1 ? 'reclamo' : 'reclamos'}`}</button></div>`;
+}
+
+function mxRowHTML(r, i) {
+  const pagos = MX.mode === 'pagos';
+  const t = tramite(r.tramiteId);
+  const atts = MX.mail.attachments || [];
+  return `<section class="mx-row card" data-mx="${i}">
+    <div class="mx-top"><span class="mx-n">${i + 1}</span>
+      ${t ? `<span class="pill gold">Actualiza ${esc(t.codigo)}</span><button class="btn ghost sm" type="button" data-act="mx-unlink" data-i="${i}">Hacer nuevo</button>` : `<span class="pill info">${pagos ? 'Pago nuevo' : 'Reclamo nuevo'}</span>`}
+      <span class="mx-hint" id="mx-hint-${i}"></span>
+      <button class="btn ghost icon sm" type="button" data-act="mx-del" data-i="${i}" aria-label="Quitar fila ${i + 1}">${ic('x')}</button></div>
+    <div class="mx-grid">
+      <div class="rx-cell mx-name" data-l="Nombre">${comboHTML('nombre', `mx-nombre-${i}`, 'Nombre', r.asegurado, 'Asegurado o cliente')}</div>
+      <div class="rx-cell" data-l="Póliza">${comboHTML('poliza', `mx-poliza-${i}`, 'Póliza', poliza(r.polizaId)?.numero || '', 'Póliza')}</div>
+      <div class="rx-cell" data-l="Cert.">${comboHTML('cert', `mx-cert-${i}`, 'Certificado', r.certificado, 'Cert.')}</div>
+      ${pagos ? `
+      <div class="rx-cell" data-l="Cheque o ref."><label class="sr" for="mx-cheque-${i}">Cheque</label><input id="mx-cheque-${i}" type="text" value="${esc(r.cheque)}" data-mxf="cheque" placeholder="N.º de cheque"></div>
+      <div class="rx-cell" data-l="Monto"><label class="sr" for="mx-monto-${i}">Monto</label><input id="mx-monto-${i}" type="text" inputmode="decimal" value="${esc(r.monto)}" data-mxf="monto" placeholder="0.00"></div>`
+      : `
+      <div class="rx-cell" data-l="N.º de reclamo"><label class="sr" for="mx-num-${i}">Número de reclamo</label><input id="mx-num-${i}" type="text" value="${esc(r.numero)}" data-mxf="numero" placeholder="Opcional"></div>
+      <div class="rx-cell mx-notes" data-l="Notas"><label class="sr" for="mx-notas-${i}">Notas</label><input id="mx-notas-${i}" type="text" value="${esc(r.notas)}" data-mxf="notas" placeholder="Qué se reclama"></div>`}
+    </div>
+    ${atts.length ? `<div class="mx-atts" role="group" aria-label="PDFs de esta fila">${atts.map(a => `<button type="button" class="mx-att" data-act="mx-att" data-i="${i}" data-a="${esc(a.id)}" aria-pressed="${r.docs.includes(a.id)}">${ic(r.docs.includes(a.id) ? 'check' : 'paperclip')}${esc(a.name)}</button>`).join('')}</div>` : ''}
+  </section>`;
+}
+
+function syncMx(st) {
+  const i = MX?.rows.indexOf(st); if (i == null || i < 0) return;
+  const row = $(`[data-mx="${i}"]`); if (!row) return;
+  const p = poliza(st.polizaId);
+  const set = (id, v) => { const el = $('#' + id); if (el && document.activeElement !== el) el.value = v; };
+  set(`mx-nombre-${i}`, st.asegurado); set(`mx-poliza-${i}`, p ? p.numero : (st.polizaTxt || '')); set(`mx-cert-${i}`, st.certificado);
+  const h = $(`#mx-hint-${i}`);
+  h.innerHTML = st.clienteId ? `${ic('check-circle')}${esc(shortName(clienteNombre(st.clienteId)))}${p ? ` · ${esc(p.ramo)} · ${esc(p.aseguradora)}` : ''}` : `${ic('warning')}Falta elegir de quién es`;
+  h.classList.toggle('ok', !!st.clienteId);
+  row.classList.toggle('bad', !st.clienteId);
+}
+
+function mxRedraw() {
+  const d = drawerEl(); if (!d || !MX) return;
+  const scroll = $('.drawer-b', d).scrollTop;
+  d.innerHTML = variosHTML();
+  $('.drawer-b', d).scrollTop = scroll;
+  MX.rows.forEach(syncMx);
+}
+
+document.addEventListener('input', e => {
+  const f = e.target.dataset?.mxf; if (!f || !MX) return;
+  MX.rows[+e.target.closest('[data-mx]').dataset.mx][f] = e.target.value;
+});
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act^="mx-"], [data-act="mail-varios"]'); if (!b) return;
+  const act = b.dataset.act, i = +b.dataset.i;
+  if (act === 'mail-varios') return openVarios(b.dataset.id);
+  if (!MX) return;
+  if (act === 'mx-att') { const r = MX.rows[i], a = b.dataset.a; r.docs = r.docs.includes(a) ? r.docs.filter(x => x !== a) : [...r.docs, a]; MX.sueltos = (MX.sueltos || []).filter(x => !MX.rows.some(rr => rr.docs.includes(x))); mxRedraw(); }
+  if (act === 'mx-del') { MX.rows.splice(i, 1); if (!MX.rows.length) return closeDrawer(); mxRedraw(); }
+  if (act === 'mx-add') { MX.rows.push({ asegurado: '', picked: '', clienteId: '', polizaId: '', certificado: '', numero: '', notas: '', monto: '', cheque: '', docs: [], tramiteId: '' }); mxRedraw(); $(`#mx-nombre-${MX.rows.length - 1}`)?.focus(); }
+  if (act === 'mx-unlink') { MX.rows[i].tramiteId = ''; mxRedraw(); }
+  if (act === 'mx-go') guardarVarios(b);
+});
+
+async function guardarVarios(btn) {
+  const m = MX.mail, pagos = MX.mode === 'pagos';
+  const malas = MX.rows.map((r, i) => r.clienteId ? -1 : i).filter(i => i >= 0);
+  if (malas.length) { toast(`Falta elegir de quién es la fila ${malas.map(i => i + 1).join(', ')}`, 'err'); $(`#mx-nombre-${malas[0]}`)?.focus(); return; }
+  if (pagos && MX.rows.some(r => !(toNum(r.monto) > 0))) { toast('Escribe el monto de cada pago', 'err'); return; }
+  btn.disabled = true;
+  try {
+    // Copiar a Drive los adjuntos elegidos, en la carpeta de cada cliente
+    const docBy = {};
+    const porCliente = {};
+    MX.rows.forEach(r => r.docs.forEach(a => { (porCliente[r.clienteId] = porCliente[r.clienteId] || new Set()).add(a); }));
+    for (const [cid, set] of Object.entries(porCliente)) {
+      const ids = [...set];
+      if (S.mode === 'demo') ids.forEach(a => { const x = mxAtt(a); docBy[cid + a] = { id: 'demo-' + a, name: x.name, size: x.size }; });
+      else {
+        toast('Guardando adjuntos en Drive…');
+        const r = await api('api/gmail', { json: { id: m.id, attachments: ids, folder: clienteNombre(cid) } });
+        (r.docs || []).forEach(d => { docBy[cid + d.partId] = d; });
+      }
+    }
+    const docsDe = r => r.docs.map(a => docBy[r.clienteId + a]).filter(Boolean);
+    const hechos = [];
+    for (const r of MX.rows) {
+      const p = poliza(r.polizaId);
+      if (pagos) {
+        const t = tramite(r.tramiteId);
+        const pg = { id: '', tramiteId: r.tramiteId, clienteId: r.clienteId, aseguradora: MX.aseguradora || t?.aseguradora || p?.aseguradora || '', forma: r.cheque ? 'Cheque' : 'Depósito', numero: r.cheque, banco: '', monto: toNum(r.monto), fechaAviso: (m.fecha || nowISO()).slice(0, 10), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: r.cheque ? 'disponible' : 'depositado', notas: r.notas || m.subject || '' };
+        if (pg.estado === 'depositado') pg.fechaEntregado = pg.fechaAviso;
+        await save('pagos', pg, `${pg.forma} ${pg.numero} por ${fmtMoney(pg.monto)} (${shortName(r.asegurado || clienteNombre(r.clienteId))})`);
+        await linkPagoTramite(pg, true);
+        hechos.push(pg);
+        continue;
+      }
+      const t = tramite(r.tramiteId);
+      if (t) {
+        const cambios = [];
+        if (r.numero && !t.numeroReclamo) { t.numeroReclamo = r.numero; cambios.push(`número ${r.numero}`); }
+        const nuevos = docsDe(r); if (nuevos.length) { t.docs = [...(t.docs || []), ...nuevos]; cambios.push(`${nuevos.length} PDF`); }
+        if (r.notas && !t.descripcion) t.descripcion = r.notas;
+        let accion;
+        if (r.numero && ['recibido', 'ingresado'].includes(t.etapa)) { t.etapa = 'numero'; t.fechaIngreso = t.fechaIngreso || todayISO(); accion = 'movió'; }
+        t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: accion ? 'etapa' : 'nota', texto: `Del correo "${m.subject}": ${cambios.join(', ') || 'revisado'}.` }];
+        await save('tramites', t, `${t.codigo}: ${cambios.join(', ') || 'actualizado'} (correo con varios reclamos)`, accion);
+        hechos.push(t);
+      } else {
+        const etapa = r.numero ? 'numero' : (MX.kind === 'solicitud' ? 'recibido' : 'ingresado');
+        const nombre = r.asegurado || clienteNombre(r.clienteId);
+        const ev = [{ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Recibido en el correo "${m.subject}".` }];
+        if (r.numero) ev.push({ fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `Número asignado ${r.numero}.` });
+        const nt = {
+          id: '', codigo: nextCodigo(), tipo: 'Reclamo', clienteId: r.clienteId, polizaId: r.polizaId, aseguradora: p?.aseguradora || MX.aseguradora || '',
+          asegurado: nombre, certificado: r.certificado, asunto: `Reclamo de ${shortName(nombre)}`, descripcion: r.notas, canal: CANALES[0], etapa, numeroReclamo: r.numero,
+          monto: toNum(r.monto) || '', fechaSolicitud: (m.fecha || nowISO()).slice(0, 10), fechaIngreso: etapa === 'recibido' ? '' : todayISO(),
+          responsable: S.me.email, visibleCliente: true, notaCliente: '', docs: docsDe(r), eventos: ev, gmailId: m.id
+        };
+        await save('tramites', nt, `${nt.codigo} Reclamo · ${nombre}${nt.numeroReclamo ? ' · ' + nt.numeroReclamo : ''}`);
+        hechos.push(nt);
+      }
+    }
+    const n = hechos.length;
+    await markMail(m.id, pagos ? `${n} pagos registrados` : `${n} reclamos: ${hechos.map(h => h.codigo).filter(Boolean).join(', ')}`, hechos[0]?.id || hechos[0]?.tramiteId);
+    MX = null;
+    closeDrawer(); render(false);
+    toast(pagos ? `${n} ${n === 1 ? 'pago registrado' : 'pagos registrados'}` : `${n} ${n === 1 ? 'reclamo guardado' : 'reclamos guardados'}`);
+  } catch (e) { btn.disabled = false; toast('No se terminó: ' + e.message, 'err'); }
+}
 
 /* ---------- eventos (delegados) ---------- */
 document.addEventListener('click', async e => {
@@ -1893,7 +2214,6 @@ function renderGate(msg) {
   const s = S.sess || {};
   $('#root').innerHTML = `<div class="gate"><div class="panel gate-card flash">
     <img src="img/logo-full.webp" alt="SIMEVI Corredores de Seguros">
-    <span class="greek" aria-hidden="true">ΑΣΦΑΛΕΙΑ</span>
     ${s.configured === false ? `<p>Falta configurar la app en Vercel: ${esc((s.missing || []).join(', '))}.</p><a class="btn" href="api/diagnose">Ver diagnóstico</a>`
       : `<p>Entra con tu cuenta de Google. Solo Silvia y Ricardo tienen acceso.</p><div id="gsi"></div>${msg ? `<div class="gate-err">${esc(msg)}</div>` : ''}`}
   </div></div>`;

@@ -44,35 +44,34 @@ const CB = {
     }
     return opts.map(o => ({ ...o, s: score(o.find, q) && score(o.find, q) + (o.bonus || 0) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
   },
-  poliza(q) {
-    return DB.polizas.filter(p => !p.cancelada && (!RX.clienteId || p.clienteId === RX.clienteId))
+  poliza(q, st = RX) {
+    return DB.polizas.filter(p => !p.cancelada && (!st.clienteId || p.clienteId === st.clienteId))
       .map(p => ({ kind: 'pol', label: p.numero, sub: `${p.ramo} · ${p.aseguradora} · ${shortName(clienteNombre(p.clienteId))}`, find: `${p.numero} ${p.ramo} ${p.aseguradora} ${clienteNombre(p.clienteId)}`, polizaId: p.id, clienteId: p.clienteId }))
       .map(o => ({ ...o, s: score(o.find, q) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
   },
-  cert(q) {
-    const p = poliza(RX.polizaId);
+  cert(q, st = RX) {
+    const p = poliza(st.polizaId);
     return (p?.asegurados || []).filter(a => a.certificado || a.nombre)
       .map(a => ({ kind: 'cert', label: a.certificado || '-', sub: a.nombre, find: `${a.certificado} ${a.nombre} ${a.documento}`, nombre: a.nombre }))
       .map(o => ({ ...o, s: score(o.find, q) })).filter(o => o.s).sort((a, b) => b.s - a.s).slice(0, 8);
   }
 };
 
-function pick(name, o) {
+function pick(name, o, st = RX) {
   if (name === 'nombre') {
-    RX.asegurado = o.label; RX.picked = o.label; RX.clienteId = o.clienteId;
-    if (o.kind === 'aseg') { RX.polizaId = o.polizaId; RX.certificado = o.certificado; }
+    st.asegurado = o.label; st.picked = o.label; st.clienteId = o.clienteId;
+    if (o.kind === 'aseg') { st.polizaId = o.polizaId; st.certificado = o.certificado; }
     else {
       const ps = DB.polizas.filter(p => p.clienteId === o.clienteId && !p.cancelada);
-      if (!ps.some(p => p.id === RX.polizaId)) RX.polizaId = ps.length === 1 ? ps[0].id : '';
+      if (!ps.some(p => p.id === st.polizaId)) st.polizaId = ps.length === 1 ? ps[0].id : '';
     }
   }
   if (name === 'poliza') {
-    RX.polizaId = o.polizaId;
-    if (RX.clienteId !== o.clienteId) { RX.clienteId = o.clienteId; if (!RX.asegurado || RX.picked !== RX.asegurado) { RX.asegurado = clienteNombre(o.clienteId); RX.picked = RX.asegurado; } }
+    st.polizaId = o.polizaId;
+    if (st.clienteId !== o.clienteId) { st.clienteId = o.clienteId; if (!st.asegurado || st.picked !== st.asegurado) { st.asegurado = clienteNombre(o.clienteId); st.picked = st.asegurado; } }
   }
-  if (name === 'cert') { RX.certificado = o.label; if (!RX.asegurado || RX.asegurado === clienteNombre(RX.clienteId)) { RX.asegurado = o.nombre; RX.picked = o.nombre; } }
-  rxKeep();
-  syncEntry();
+  if (name === 'cert') { st.certificado = o.label; if (!st.asegurado || st.asegurado === clienteNombre(st.clienteId)) { st.asegurado = o.nombre; st.picked = o.nombre; } }
+  if (st === RX) { rxKeep(); syncEntry(); } else syncMx(st);
 }
 
 /* Pinta en la fila de ingreso lo que ya se sabe */
@@ -116,7 +115,7 @@ VIEWS.reclamos = () => {
 
   return head('Reclamos', 'Escribe en la primera fila y pulsa Enter. Nombre, póliza y certificado buscan mientras escribes y se llenan entre sí.') + `
   <div class="rx-entry">
-    <span class="rx-title"><span class="greek" aria-hidden="true">ΑΙΤΗΜΑ</span>Nuevo reclamo</span>
+    <span class="rx-title">Nuevo reclamo</span>
     <div class="rx-grid rx-head" aria-hidden="true"><span>Nombre</span><span>Póliza</span><span>Cert.</span><span>PDF</span><span>N.º de reclamo</span><span>Notas</span><span></span></div>
     <form class="rx-grid rx-new" id="rx-new" autocomplete="off">
       <div class="rx-cell" data-l="Nombre">${comboHTML('nombre', 'rx-nombre', 'Nombre del asegurado', RX.asegurado, 'Asegurado o cliente')}</div>
@@ -159,12 +158,13 @@ VIEWS.reclamos = () => {
 
 /* --- comportamiento de las listas (el estado vive en cada caja) --- */
 const finePointer = () => matchMedia('(hover:hover) and (pointer:fine)').matches;
+const cbState = box => { const r = box.closest('[data-mx]'); return r ? MX.rows[+r.dataset.mx] : RX; };
 function cbOpen(input) {
   const box = input.closest('.cb'); const name = box.dataset.cb; const list = $('.cb-list', box);
-  const v = input.value.trim();
-  box._opts = CB[name](v); box._active = box._opts.length && v ? 0 : -1;
+  const v = input.value.trim(); const st = cbState(box);
+  box._opts = CB[name](v, st); box._active = box._opts.length && v ? 0 : -1;
   if (!box._opts.length) {
-    list.innerHTML = v ? `<li class="cb-empty">Sin coincidencias${name === 'nombre' ? `. <button type="button" data-act="rx-new-cliente">Crear cliente “${esc(v)}”</button>` : ''}</li>` : `<li class="cb-empty">${name === 'cert' ? (RX.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
+    list.innerHTML = v ? `<li class="cb-empty">Sin coincidencias${name === 'nombre' && st === RX ? `. <button type="button" data-act="rx-new-cliente">Crear cliente “${esc(v)}”</button>` : ''}</li>` : `<li class="cb-empty">${name === 'cert' ? (st.polizaId ? 'Esta póliza no tiene certificados registrados' : 'Elige primero la póliza') : 'Escribe para buscar'}</li>`;
   } else list.innerHTML = box._opts.map((o, i) => `<li role="option" id="${input.id}-o${i}" data-i="${i}" aria-selected="${i === box._active}"><span class="cb-l">${mark(o.label, v)}</span><span class="cb-s">${mark(o.sub, v)}</span></li>`).join('');
   list.hidden = false; input.setAttribute('aria-expanded', 'true');
   input.setAttribute('aria-activedescendant', box._active >= 0 ? `${input.id}-o${box._active}` : '');
@@ -181,7 +181,7 @@ function cbMove(input, d) {
 }
 function cbChoose(input, i) {
   const box = input.closest('.cb'); const o = box._opts?.[i]; if (!o) return false;
-  pick(box.dataset.cb, o);
+  pick(box.dataset.cb, o, cbState(box));
   input.value = o.label;
   cbClose(box);
   return true;
@@ -189,16 +189,16 @@ function cbChoose(input, i) {
 // Al salir sin elegir: si lo escrito coincide con una sola opción exacta, se toma esa.
 function cbAutoMatch(input) {
   const box = input.closest('.cb'); if (!box) return;
-  const name = box.dataset.cb, v = input.value.trim();
+  const name = box.dataset.cb, v = input.value.trim(), st = cbState(box);
   if (!v) return;
-  if (name === 'nombre' && RX.picked && norm(RX.picked) === norm(v)) return;
-  const opts = CB[name](v);
+  if (name === 'nombre' && st.picked && norm(st.picked) === norm(v)) return;
+  const opts = CB[name](v, st);
   const exact = opts.filter(o => norm(o.label) === norm(v) || (name === 'nombre' && o.find && norm(o.find).split(' ').includes(norm(v))));
   const only = exact.length === 1 ? exact[0] : (opts.length === 1 && opts[0].s >= 4 ? opts[0] : null);
-  if (only) { pick(name, only); input.value = only.label; }
+  if (only) { pick(name, only, st); input.value = only.label; }
 }
 
-document.addEventListener('focusin', e => { const i = e.target.closest?.('.cb input'); if (i && S.route === 'reclamos' && (i.value || finePointer())) cbOpen(i); });
+document.addEventListener('focusin', e => { const i = e.target.closest?.('.cb input'); if (i && (S.route === 'reclamos' || i.closest('.drawer')) && (i.value || finePointer())) cbOpen(i); });
 document.addEventListener('focusout', e => {
   const i = e.target.closest?.('.cb input'); if (!i) return;
   setTimeout(() => { const box = i.closest('.cb'); if (box && !box.contains(document.activeElement)) { cbAutoMatch(i); cbClose(box); } }, 120);
@@ -206,12 +206,13 @@ document.addEventListener('focusout', e => {
 document.addEventListener('input', e => {
   const i = e.target.closest?.('.cb input');
   if (i) {
-    const name = i.closest('.cb').dataset.cb, v = i.value;
-    if (name === 'nombre') { RX.asegurado = v; if (norm(v) !== norm(RX.picked)) { RX.picked = ''; if (!v) { RX.clienteId = ''; RX.polizaId = ''; RX.certificado = ''; } } }
-    if (name === 'poliza') { RX.polizaTxt = v; if (!v) RX.polizaId = ''; }
-    if (name === 'cert') RX.certificado = v;
-    rxKeep(); cbOpen(i);
-    if (!v && name === 'nombre') syncEntry();
+    const box = i.closest('.cb'), name = box.dataset.cb, v = i.value, st = cbState(box);
+    if (name === 'nombre') { st.asegurado = v; if (norm(v) !== norm(st.picked)) { st.picked = ''; if (!v) { st.clienteId = ''; st.polizaId = ''; st.certificado = ''; } } }
+    if (name === 'poliza') { st.polizaTxt = v; if (!v) st.polizaId = ''; }
+    if (name === 'cert') st.certificado = v;
+    if (st === RX) rxKeep();
+    cbOpen(i);
+    if (!v && name === 'nombre') st === RX ? syncEntry() : syncMx(st);
     return;
   }
   const r = e.target.dataset?.rx; if (r) { RX[r] = e.target.value; rxKeep(); }
@@ -233,11 +234,11 @@ document.addEventListener('pointerdown', e => {
   cbChoose(input, +li.dataset.i); focusNext(input);
 });
 function focusNext(input) {
-  // Salta a la siguiente casilla vacía de la fila
-  const order = ['rx-nombre', 'rx-poliza', 'rx-cert', 'rx-num', 'rx-notas'];
-  const k = order.indexOf(input.id);
-  for (const id of order.slice(k + 1)) { const el = $('#' + id); if (el && !el.value) return el.focus(); }
-  $('#rx-notas')?.focus();
+  // Salta a la siguiente casilla vacía de la misma fila
+  const row = input.closest('.rx-new, .mx-row'); if (!row) return;
+  const all = $$('input[type=text]', row);
+  const rest = all.slice(all.indexOf(input) + 1);
+  (rest.find(el => !el.value) || rest[rest.length - 1])?.focus();
 }
 
 /* --- guardar --- */

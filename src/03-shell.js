@@ -199,7 +199,6 @@ VIEWS.inicio = () => {
   return `
   <section class="hello">
     <div class="panel hello-main flash">
-      <span class="greek" aria-hidden="true">ΑΣΦΑΛΕΙΑ</span>
       <span class="when">${esc(hoy)}</span>
       <h1>${saludo}, <span>${esc(firstName(S.me))}</span></h1>
       <p>${mine ? `Hay ${mine} ${mine === 1 ? 'cosa pendiente' : 'cosas pendientes'} entre los dos. Lo más urgente está arriba.` : 'Todo al día. No hay trámites por ingresar ni pagos por entregar.'}</p>

@@ -90,7 +90,14 @@ async function savePago(to) {
   const desc = `${p.forma} ${p.numero || ''} por ${fmtMoney(p.monto)} (${clienteNombre(p.clienteId).split(',')[0]})`.replace(/\s+/g, ' ');
   try { await save('pagos', p, to ? `${desc}: ${PAGO_E[p.estado].n.toLowerCase()}` : desc, to ? 'movió' : undefined); } catch (e) { return; }
   if (cur.afterSave) { const fn = cur.afterSave; cur.afterSave = null; await fn(p); }
-  // El trámite ligado avanza solo
+  await linkPagoTramite(p, isNew);
+  if (!pagoAbierto(p) && (to || isNew)) celebrate();
+  closeDrawer(); render(false);
+  toast(isNew ? 'Pago registrado' : to ? `Pago: ${PAGO_E[p.estado].n}` : 'Cambios guardados');
+}
+
+// El trámite ligado avanza solo: pago registrado → Pago disponible; pago entregado → Cerrado.
+async function linkPagoTramite(p, isNew) {
   const t = tramite(p.tramiteId);
   if (t && isNew && tramiteAbierto(t) && t.etapa !== 'pago') {
     t.etapa = 'pago'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.forma} disponible por ${fmtMoney(p.monto)}.` }];
@@ -100,9 +107,6 @@ async function savePago(to) {
     t.etapa = 'cerrado'; t.eventos = [...(t.eventos || []), { fecha: nowISO(), por: S.me.email, tipo: 'etapa', texto: `${p.estado === 'depositado' ? 'Depositado' : 'Entregado a ' + p.entregadoA}. Cerrado.` }];
     await save('tramites', t, `${t.codigo} a Cerrado`, 'movió').catch(() => { });
   }
-  if (!pagoAbierto(p) && (to || isNew)) celebrate();
-  closeDrawer(); render(false);
-  toast(isNew ? 'Pago registrado' : to ? `Pago: ${PAGO_E[p.estado].n}` : 'Cambios guardados');
 }
 
 function exportPagos() {
@@ -321,7 +325,6 @@ async function renderPortal(tok) {
   };
   root.innerHTML = `<div class="portal enter">
     <div class="portal-top"><img src="img/logo-full.webp" alt="SIMEVI Corredores de Seguros">${staff ? `<button class="btn sm" type="button" data-act="portal-back">${ic('caret-left')}Volver a la app</button>` : ''}</div>
-    <span class="greek" aria-hidden="true">ΕΙΡΗΝΗ ΥΜΙΝ</span>
     <h1 style="margin:8px 0 6px">Hola, ${esc(String(data.cliente.nombre).split(/,| S\.A\./)[0])}</h1>
     <p class="muted" style="margin:0 0 24px">Aquí puedes ver en qué va cada gestión que hacemos por ti con tu aseguradora.</p>
     ${(data.pagos || []).map(p => `<div class="banner">${ic('hand-coins')}<span>${p.forma === 'Cheque' ? `Tu cheque de ${esc(p.aseguradora)} por <b>${fmtMoney(p.monto)}</b> ${p.estado === 'oficina' ? 'ya está en nuestra oficina. Te avisamos para coordinar la entrega.' : 'está listo; vamos a recogerlo por ti.'}` : `${esc(p.aseguradora)} depositó <b>${fmtMoney(p.monto)}</b>.`}</span></div>`).join('')}

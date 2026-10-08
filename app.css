@@ -1,7 +1,7 @@
 /* =====================================================================
    SIMEVI · VIDRIO ESTELAR (paleta del logo: dorado sobre azul marino)
    Misma gramática que Arca: vidrio, esquinas cortadas, escuadras, rombos,
-   destellos con significado y griego decorativo (ΑΣΦΑΛΕΙΑ = seguridad).
+   y destellos con significado.
    ===================================================================== */
 
 :root{
@@ -22,7 +22,6 @@
   --cut:16px;
   --f-display:"Chakra Petch","Archivo",system-ui,sans-serif;
   --f-body:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --f-greek:"Noto Serif Display","Times New Roman",serif;
   --ease-out:cubic-bezier(.23,1,.32,1);
   --ease-io:cubic-bezier(.77,0,.175,1);
   --ease-drawer:cubic-bezier(.32,.72,0,1);
@@ -110,7 +109,6 @@ h1{font-size:clamp(1.7rem,1.3rem + 1.6vw,2.4rem);line-height:1.08;font-weight:70
 h2{font-size:1.06rem;letter-spacing:.08em}
 h3{font-size:.95rem;letter-spacing:.06em}
 .label{font:500 .68rem/1.2 var(--f-display);letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
-.greek{font:400 .74rem/1 var(--f-greek);letter-spacing:.32em;color:var(--acc);opacity:.85}
 .muted{color:var(--muted)}
 .faint{color:var(--faint)}
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--glass-line)}
@@ -520,7 +518,7 @@ code{font-size:.85em;color:var(--acc-hi)}
 .rx-entry::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(var(--acc),var(--acc)) 9px 9px/13px 1.5px no-repeat,linear-gradient(var(--acc),var(--acc)) 9px 9px/1.5px 13px no-repeat,
     linear-gradient(var(--acc),var(--acc)) right 9px bottom 9px/13px 1.5px no-repeat,linear-gradient(var(--acc),var(--acc)) right 9px bottom 9px/1.5px 13px no-repeat}
-.rx-title{display:flex;align-items:center;gap:12px;padding:0 16px 0 28px;font:600 .8rem/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--acc-hi)}
+.rx-title{display:flex;align-items:center;gap:12px;padding:0 16px 0 30px;font:600 .8rem/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--acc-hi)}
 .rx-new{padding-block:12px 4px;border:0}
 .rx-new input,.rx-new select{min-height:40px}
 .rx-under{grid-column:1/-1;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:2px 0 8px;font-size:.8rem}
@@ -601,3 +599,31 @@ code{font-size:.85em;color:var(--acc-hi)}
 .rx-stagebtn{transition:transform 160ms var(--ease-out)}
 .rx-stagebtn:active{transform:scale(.97)}
 @media (hover:hover) and (pointer:fine){.rx-stagebtn:hover .pill{box-shadow:inset 0 0 0 1px currentColor}}
+
+/* ---------- Correo con varios reclamos ---------- */
+.drawer.wide{width:min(980px,100vw)}
+.mx-mail{margin-bottom:14px;font-size:.84rem;color:var(--muted)}
+.mx-mail summary{cursor:pointer;color:var(--acc-hi);font:500 .74rem/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase}
+.mx-mail p{margin:10px 0 0;padding:12px 14px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line)}
+.mx-rows{display:flex;flex-direction:column;gap:10px}
+.mx-row{padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px;clip-path:none}
+.mx-row.bad{box-shadow:inset 0 0 0 1px var(--bad),inset 0 1px 0 var(--glass-hi)}
+.mx-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mx-top .btn.icon{margin-left:auto}
+.mx-n{display:grid;place-items:center;width:24px;height:24px;font:700 .72rem/1 var(--f-display);color:var(--on-acc);background:var(--acc);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.mx-hint{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--bad)}
+.mx-hint.ok{color:var(--ok)}
+.mx-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 90px minmax(0,1fr) minmax(0,1.4fr);gap:8px}
+.mx-atts{display:flex;flex-wrap:wrap;gap:6px}
+.mx-att{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;font-size:.78rem;color:var(--muted);background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--line);transition:background-color .15s ease,color .15s ease}
+.mx-att svg.i{width:14px;height:14px}
+.mx-att[aria-pressed="true"]{color:var(--acc-hi);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.mx-att:active{transform:scale(.97)}
+@media (max-width:760px){
+  .mx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mx-grid .mx-name,.mx-grid .mx-notes{grid-column:1/-1}
+  .mx-grid .rx-cell::before{content:attr(data-l);display:block;margin-bottom:5px;font:500 .6rem/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+}
+.mx-top{position:relative;padding-right:40px}
+.mx-top .btn.icon{position:absolute;right:0;top:-2px;margin:0}
+@media (min-width:761px){.mx-grid{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 112px minmax(0,1fr) minmax(0,1.4fr)}}

@@ -25,7 +25,7 @@ function classify(m) {
     .filter(x => !polizas.has(norm(x[2])))
     .sort((a, b) => (b[1] ? 1 : 0) - (a[1] ? 1 : 0));
   const num = cands[0] ? [cands[0][0], cands[0][2]] : null;
-  if (/cheque\s+(?:n[°oº.]*\s*\d+\s+)?.*disponible|cheque disponible|dep[oó]sito|transferencia|abono\s+en\s+cuenta/i.test(txt) && r.aseguradora) {
+  if (/cheques?\b.*disponibles?|disponibles?\b.*cheques?|dep[oó]sito|transferencia|abono\s+en\s+cuenta/i.test(txt) && r.aseguradora) {
     r.kind = 'pago';
     r.forma = /cheque/i.test(txt) ? 'Cheque' : /transferencia/i.test(txt) ? 'Transferencia' : 'Depósito';
     r.numero = cheque?.[1] || ref?.[1] || '';
@@ -70,24 +70,30 @@ VIEWS.bandeja = () => {
     const t = tramite(k.tramiteId), c = cliente(k.clienteId);
     const done = DB.correos.find(x => x.id === m.id);
     let acts = '';
-    if (!done) {
+    const x = !done ? extraer(m) : null;
+    const varios = x && x.rows.length > 1;
+    if (varios) {
+      acts += `<button class="btn primary sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">${ic('list-bullets')}Revisar los ${x.rows.length}</button>`;
+      acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
+    } else if (!done) {
       if (k.kind === 'pago') acts += `<button class="btn primary sm" type="button" data-act="mail-pago" data-id="${esc(m.id)}">${ic('hand-coins')}Registrar pago</button>`;
       else if (k.kind === 'numero') acts += `<button class="btn primary sm" type="button" data-act="mail-numero" data-id="${esc(m.id)}">${ic('seal-check')}${t ? 'Poner número en ' + esc(t.codigo) : 'Asignar a un trámite'}</button>`;
       else acts += `<button class="btn primary sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">${ic('plus')}Crear trámite</button>`;
       if (k.kind !== 'solicitud') acts += `<button class="btn sm" type="button" data-act="mail-tramite" data-id="${esc(m.id)}">Crear trámite</button>`;
+      if (k.kind === 'solicitud' && (m.attachments || []).length >= 2) acts += `<button class="btn sm" type="button" data-act="mail-varios" data-id="${esc(m.id)}">Separar en varios</button>`;
       acts += `<button class="btn ghost sm" type="button" data-act="mail-skip" data-id="${esc(m.id)}">Archivar</button>`;
     } else acts = `<span class="tag">${av(done.creadoPor, 'sm')}${esc(done.nota || 'Procesado')}</span>`;
     if (S.mode === 'live') acts += `<a class="btn ghost sm" href="https://mail.google.com/mail/u/0/#all/${esc(m.threadId || m.id)}" target="_blank" rel="noopener">${ic('arrow-square-out')}Gmail</a>`;
     return `<article class="mail ${done ? 'done' : ''}">
-      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b><span class="faint">${fmtAgo(m.fecha)}</span><span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span></div>
+      <div class="from">${ic('envelope-simple')}<b>${esc(m.fromName || m.from)}</b><span class="faint">${fmtAgo(m.fecha)}</span>${varios ? `<span class="pill gold">${x.rows.length} ${x.mode === 'pagos' ? 'pagos' : 'reclamos'}</span>` : `<span class="pill ${kinds[k.kind][1]}">${kinds[k.kind][0]}</span>`}</div>
       <h3>${esc(m.subject || '(sin asunto)')}</h3>
       <p>${esc(m.snippet || '')}</p>
       <div class="found">
-        ${c ? `<span class="tag">${ic('user')}${esc(c.nombre.split(',')[0])}</span>` : `<span class="tag faint">${ic('user')}Cliente no reconocido</span>`}
+        ${varios ? x.rows.map(r => `<span class="tag">${ic('user')}${esc(shortName(r.asegurado || 'Sin nombre'))}${r.numero ? ' · ' + esc(r.numero) : ''}${r.cheque ? ' · ch. ' + esc(r.cheque) : ''}${r.monto ? ' · ' + fmtMoney(r.monto) : ''}</span>`).join('') : c ? `<span class="tag">${ic('user')}${esc(c.nombre.split(',')[0])}</span>` : `<span class="tag faint">${ic('user')}Cliente no reconocido</span>`}
         ${k.polizaNum ? `<span class="tag">${ic('shield-check')}${esc(k.polizaNum)}</span>` : ''}
-        ${k.reclamo ? `<span class="tag">${ic('seal-check')}${esc(k.reclamo)}</span>` : ''}
-        ${k.monto ? `<span class="tag">${ic('money-wavy')}${fmtMoney(k.monto)}</span>` : ''}
-        ${t ? `<span class="tag">${ic('folder-open')}${esc(t.codigo)}</span>` : ''}
+        ${k.reclamo && !varios ? `<span class="tag">${ic('seal-check')}${esc(k.reclamo)}</span>` : ''}
+        ${k.monto && !varios ? `<span class="tag">${ic('money-wavy')}${fmtMoney(k.monto)}</span>` : ''}
+        ${t && !varios ? `<span class="tag">${ic('folder-open')}${esc(t.codigo)}</span>` : ''}
         ${(m.attachments || []).map(a => `<span class="attach">${ic('paperclip')}${esc(a.name)}</span>`).join('')}
       </div>
       <div class="acts">${acts}</div>

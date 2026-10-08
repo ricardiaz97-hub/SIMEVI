@@ -1,5 +1,5 @@
 /* ---------- capa de datos ---------- */
-const DEMO_KEY = 'simevi-demo-v2';
+const DEMO_KEY = 'simevi-demo-v3';
 const DEMO_USERS = [
   { email: 'ricardovegaprod@gmail.com', nombre: 'Ricardo Vega', ini: 'RV' },
   { email: 'silvia.diaz@simevi.demo', nombre: 'Silvia de Díaz', ini: 'SD' }
@@ -175,8 +175,14 @@ function seedDemo() {
     { id: 'g4', tramiteId: '', clienteId: 'c2', aseguradora: 'Seguros del Pacífico', forma: 'Cheque', numero: '0098812', banco: 'Banco Davivienda', monto: 260, fechaAviso: D(0), fechaRecogido: '', fechaEntregado: '', entregadoA: '', folio: '', estado: 'disponible', notas: 'Devolución de prima por ajuste de suma asegurada.', ...by(R, 0, 8) }
   ];
 
-  const mail = (id, n, h, from, fromName, subject, snippet, attachments = []) => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments });
+  const mail = (id, n, h, from, fromName, subject, snippet, attachments = [], body = '') => ({ id, fecha: ts(n, h), from, fromName, subject, snippet, attachments, body });
   const inbox = [
+    mail('m7', 0, 9, 'rrhh@lasbrisas.com.sv', 'Mauricio Guardado', 'Reembolsos de gastos médicos de septiembre', 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American…', [
+      { id: 'a6', name: 'Reembolso Karla Ventura.pdf', size: 410000, mime: 'application/pdf' },
+      { id: 'a7', name: 'Reembolso Luis Pineda.pdf', size: 655000, mime: 'application/pdf' },
+      { id: 'a8', name: 'Reembolso Mauricio Guardado.pdf', size: 302000, mime: 'application/pdf' }
+    ], 'Buen día Silvia, le envío tres reembolsos del colectivo de gastos médicos para que los ingrese a Pan-American:\n1. Karla Beatriz Ventura: consulta de control y exámenes de laboratorio, $145.00\n2. Luis Alonso Pineda: terapia física, 6 sesiones, $210.00\n3. Mauricio Guardado Ayala: medicamentos de septiembre, $86.40\nVan los PDF con facturas y recetas. Saludos.'),
+    mail('m8', 0, 7, 'reclamos@palig.com', 'Pan-American Life Reclamos', 'Registro de reclamos · Póliza GMC-118734', 'Le confirmamos el registro de los siguientes reclamos de la póliza GMC-118734…', [], 'Estimado corredor, le confirmamos el registro de los siguientes reclamos de la póliza GMC-118734 (Grupo Agroindustrial Las Brisas):\n- Luis Alonso Pineda: reclamo PAL-GM-2026-31902\n- Mauricio Guardado Ayala: reclamo PAL-GM-2026-31903\nTiempo estimado de respuesta: 8 días hábiles.'),
     mail('m1', 0, 8, 'reclamos@sisa.com.sv', 'SISA Reclamos', 'Cheque disponible · Reclamo VI-RC-2026-7731', 'Estimado corredor: le informamos que el cheque No. 00421190 por $400.00 a favor de Marta Elena Rivas de Henríquez se encuentra disponible en caja, Colonia Escalón.', []),
     mail('m2', 0, 7, 'notificaciones@fedecredito.com.sv', 'Seguros Fedecrédito', 'Registro de reclamo APC-2026-0091', 'Su reclamo ha sido registrado con el número de reclamo APC-R-26-00387 para la póliza APC-2026-0091 (Colegio Bilingüe San Gabriel). Tiempo estimado de respuesta: 10 días hábiles.', []),
     mail('m3', -1, 17, 'jralfaro.m@hotmail.com', 'José Roberto Alfaro', 'Facturas de taller para mi reclamo', 'Buenas tardes, les adjunto la factura del taller y la proforma de repuestos que me pidió MAPFRE. Póliza AU-2025-602917.', [{ id: 'a1', name: 'Factura taller Autofix.pdf', size: 380000, mime: 'application/pdf' }, { id: 'a2', name: 'Proforma repuestos.pdf', size: 214000, mime: 'application/pdf' }]),

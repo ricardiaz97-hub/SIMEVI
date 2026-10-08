@@ -60,7 +60,7 @@ export default async function handler(req, res) {
           requestBody: { name: p.filename, parents: [parent], description: `Adjunto del correo "${header(m, 'subject')}" (copiado por ${user.nombre})` },
           media: { mimeType: p.mimeType || 'application/octet-stream', body: Readable.from(buf) }, fields: 'id,name,size'
         });
-        docs.push({ id: f.data.id, name: f.data.name, size: +f.data.size || buf.length });
+        docs.push({ id: f.data.id, name: f.data.name, size: +f.data.size || buf.length, partId: p.partId });
       }
       return res.json({ docs });
     }
